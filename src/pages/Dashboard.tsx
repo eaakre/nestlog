@@ -37,7 +37,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
         <SleepCard childId={activeChild.id} />
         <PumpingCard childId={activeChild.id} />
         <FeedingCard childId={activeChild.id} />
