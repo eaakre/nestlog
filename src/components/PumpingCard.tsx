@@ -10,9 +10,10 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const { user } = useAuth()
   const [active, setActive] = useState<PumpingSession | null>(null)
   const [busy, setBusy] = useState(false)
-  const [showFinish, setShowFinish] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [side, setSide] = useState<Side>('both')
   const [amount, setAmount] = useState('')
+  const [notes, setNotes] = useState('')
   const now = useNow()
 
   const loadActive = async () => {
@@ -52,6 +53,27 @@ export default function PumpingCard({ childId }: { childId: string }) {
     setBusy(false)
   }
 
+  const openModal = () => {
+    if (!active) return
+    setSide(active.side ?? 'both')
+    setAmount(active.amount_ml != null ? String(active.amount_ml) : '')
+    setNotes(active.notes ?? '')
+    setShowModal(true)
+  }
+
+  // Save without ending the pump — jots down side/amount so far but leaves
+  // end_time null, so the timer on the card keeps counting.
+  const saveOnly = async () => {
+    if (!active) return
+    setBusy(true)
+    await supabase
+      .from('pumping_sessions')
+      .update({ side, amount_ml: amount ? Number(amount) : null, notes: notes || null })
+      .eq('id', active.id)
+    setBusy(false)
+    setShowModal(false)
+  }
+
   const finish = async () => {
     if (!active) return
     setBusy(true)
@@ -60,11 +82,12 @@ export default function PumpingCard({ childId }: { childId: string }) {
       .update({
         end_time: new Date().toISOString(),
         side,
-        amount_ml: amount ? Number(amount) : null
+        amount_ml: amount ? Number(amount) : null,
+        notes: notes || null
       })
       .eq('id', active.id)
     setBusy(false)
-    setShowFinish(false)
+    setShowModal(false)
     setAmount('')
   }
 
@@ -77,7 +100,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
       {active ? (
         <>
           <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
-          <button className="btn-primary" onClick={() => setShowFinish(true)} disabled={busy}>
+          <button className="btn-primary" onClick={openModal} disabled={busy}>
             Finish
           </button>
         </>
@@ -90,8 +113,8 @@ export default function PumpingCard({ childId }: { childId: string }) {
         </>
       )}
 
-      {showFinish && (
-        <Modal title="Finish pumping" onClose={() => setShowFinish(false)}>
+      {showModal && (
+        <Modal title="Pumping" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
             <div>
               <label className="label">Side</label>
@@ -118,9 +141,19 @@ export default function PumpingCard({ childId }: { childId: string }) {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <button className="btn-primary" onClick={finish} disabled={busy}>
-              Save
-            </button>
+            <div>
+              <label className="label">Notes</label>
+              <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button className="btn-primary" onClick={finish} disabled={busy}>
+                Finish pumping
+              </button>
+              <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
+                Save — keep pumping
+              </button>
+            </div>
           </div>
         </Modal>
       )}

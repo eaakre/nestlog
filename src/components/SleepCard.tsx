@@ -12,9 +12,8 @@ export default function SleepCard({ childId }: { childId: string }) {
   const [busy, setBusy] = useState(false)
   const now = useNow()
 
-  const [showFinish, setShowFinish] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [editStart, setEditStart] = useState('')
-  const [editEnd, setEditEnd] = useState('')
   const [notes, setNotes] = useState('')
 
   const loadActive = async () => {
@@ -52,32 +51,44 @@ export default function SleepCard({ childId }: { childId: string }) {
     setBusy(false)
   }
 
-  const openFinish = () => {
+  const openModal = () => {
     if (!active) return
     setEditStart(toDatetimeLocalValue(active.start_time))
-    setEditEnd(toDatetimeLocalValue(new Date().toISOString()))
     setNotes(active.notes ?? '')
-    setShowFinish(true)
+    setShowModal(true)
   }
 
-  const totalMinutes =
-    editStart && editEnd
-      ? Math.max(0, (new Date(fromDatetimeLocalValue(editEnd)).getTime() - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000)
-      : 0
+  const liveMinutes = editStart
+    ? Math.max(0, (now - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000)
+    : 0
 
-  const finish = async () => {
+  // Save without ending the sleep — just updates the start time / notes on the
+  // still-open session. The timer keeps counting.
+  const saveOnly = async () => {
+    if (!active) return
+    setBusy(true)
+    await supabase
+      .from('sleep_sessions')
+      .update({ start_time: fromDatetimeLocalValue(editStart), notes: notes || null })
+      .eq('id', active.id)
+    setBusy(false)
+    setShowModal(false)
+  }
+
+  // Actually ends the sleep session.
+  const wakeUp = async () => {
     if (!active) return
     setBusy(true)
     await supabase
       .from('sleep_sessions')
       .update({
         start_time: fromDatetimeLocalValue(editStart),
-        end_time: fromDatetimeLocalValue(editEnd),
+        end_time: new Date().toISOString(),
         notes: notes || null
       })
       .eq('id', active.id)
     setBusy(false)
-    setShowFinish(false)
+    setShowModal(false)
   }
 
   return (
@@ -89,7 +100,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       {active ? (
         <>
           <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
-          <button className="btn-primary" onClick={openFinish} disabled={busy}>
+          <button className="btn-primary" onClick={openModal} disabled={busy}>
             Wake up
           </button>
         </>
@@ -102,12 +113,12 @@ export default function SleepCard({ childId }: { childId: string }) {
         </>
       )}
 
-      {showFinish && (
-        <Modal title="Sleep" onClose={() => setShowFinish(false)}>
+      {showModal && (
+        <Modal title="Sleep" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
             <div className="text-center py-2">
-              <p className="text-parchment-300 text-sm mb-1">Total time</p>
-              <p className="text-4xl font-display tabular-nums">{formatDurationMinutes(totalMinutes)}</p>
+              <p className="text-parchment-300 text-sm mb-1">Total time so far</p>
+              <p className="text-4xl font-display tabular-nums">{formatDurationMinutes(liveMinutes)}</p>
             </div>
 
             <div>
@@ -115,17 +126,18 @@ export default function SleepCard({ childId }: { childId: string }) {
               <input className="input" type="datetime-local" value={editStart} onChange={(e) => setEditStart(e.target.value)} />
             </div>
             <div>
-              <label className="label">End time</label>
-              <input className="input" type="datetime-local" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} />
-            </div>
-            <div>
               <label className="label">Notes</label>
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
 
-            <button className="btn-primary" onClick={finish} disabled={busy}>
-              Save
-            </button>
+            <div className="flex flex-col gap-2">
+              <button className="btn-primary" onClick={wakeUp} disabled={busy}>
+                Wake up &amp; stop
+              </button>
+              <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
+                Save — keep sleeping
+              </button>
+            </div>
           </div>
         </Modal>
       )}

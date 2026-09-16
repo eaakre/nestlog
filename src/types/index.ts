@@ -54,6 +54,7 @@ export type Feeding = {
   duration_left_minutes: number | null
   duration_right_minutes: number | null
   start_time: string
+  end_time: string | null // null while a breastfeed session is still in progress; bottle/solid are set immediately
   notes: string | null
   created_at: string
 }

@@ -28,6 +28,7 @@ function describe(entry: TimelineEntry): { text: string; sub?: string; barPct?: 
       const f = entry.data as Feeding
       if (f.type === 'bottle') return { text: `Bottle${f.amount_ml ? ` · ${f.amount_ml}ml` : ''}` }
       if (f.type === 'breast') {
+        if (!f.end_time) return { text: 'Feeding in progress' }
         const parts: string[] = []
         if (f.duration_left_minutes) parts.push(`L ${formatDurationMinutes(f.duration_left_minutes)}`)
         if (f.duration_right_minutes) parts.push(`R ${formatDurationMinutes(f.duration_right_minutes)}`)

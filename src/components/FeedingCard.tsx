@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
+import { formatElapsed } from '../lib/format'
 import Modal from './Modal'
 import type { FeedingType, Side, Feeding } from '../types'
 
@@ -20,42 +21,97 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const [busy, setBusy] = useState(false)
   const now = useNow()
 
-  // Breast: two independent accumulators + which one (if any) is currently running
+  // The DB row for an in-progress breastfeed session — created as soon as a
+  // side starts timing, updated on every "Save", finalized (end_time set)
+  // when the feed is marked done. While it's set, the card shows a live
+  // "feeding in progress" state, resumable from any device.
+  const [activeFeedingId, setActiveFeedingId] = useState<string | null>(null)
+  const [sessionStart, setSessionStart] = useState<number | null>(null)
+
   const [leftSeconds, setLeftSeconds] = useState(0)
   const [rightSeconds, setRightSeconds] = useState(0)
   const [activeSide, setActiveSide] = useState<ActiveSide>(null)
   const [activeSince, setActiveSince] = useState<number | null>(null)
   const [lastSide, setLastSide] = useState<Side | null>(null)
-  const [sessionStart, setSessionStart] = useState<number | null>(null)
   const [previousLastSide, setPreviousLastSide] = useState<Side | null>(null)
   const [notes, setNotes] = useState('')
 
-  // Bottle
   const [amount, setAmount] = useState('')
 
-  // Load the side used on the last breastfeed, so you know where to start —
-  // same idea as Nara's "last side" badge.
+  // Pick up an in-progress breastfeed on load (e.g. you or your partner
+  // started one earlier and didn't finish it yet).
   useEffect(() => {
-    if (!open || type !== 'breast') return
+    supabase
+      .from('feedings')
+      .select('*')
+      .eq('child_id', childId)
+      .eq('type', 'breast')
+      .is('end_time', null)
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const f = data as Feeding | null
+        if (f && !activeSide) {
+          setActiveFeedingId(f.id)
+          setSessionStart(new Date(f.start_time).getTime())
+          setLeftSeconds((f.duration_left_minutes ?? 0) * 60)
+          setRightSeconds((f.duration_right_minutes ?? 0) * 60)
+          setLastSide(f.side)
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId])
+
+  useEffect(() => {
+    if (!open || type !== 'breast' || activeFeedingId) return
     supabase
       .from('feedings')
       .select('side')
       .eq('child_id', childId)
       .eq('type', 'breast')
+      .not('end_time', 'is', null)
       .order('start_time', { ascending: false })
       .limit(1)
       .maybeSingle()
       .then(({ data }) => setPreviousLastSide((data as Pick<Feeding, 'side'> | null)?.side ?? null))
-  }, [open, type, childId])
+  }, [open, type, childId, activeFeedingId])
 
   const runningExtra = activeSide && activeSince ? (now - activeSince) / 1000 : 0
   const liveLeft = leftSeconds + (activeSide === 'left' ? runningExtra : 0)
   const liveRight = rightSeconds + (activeSide === 'right' ? runningExtra : 0)
 
-  const toggleSide = (side: 'left' | 'right') => {
+  const ensureRow = async (): Promise<string | null> => {
+    if (activeFeedingId) return activeFeedingId
+    if (!user) return null
+    const startIso = new Date().toISOString()
+    const { data } = await supabase
+      .from('feedings')
+      .insert({
+        child_id: childId,
+        logged_by: user.id,
+        type: 'breast',
+        start_time: startIso,
+        end_time: null,
+        side: null,
+        amount_ml: null,
+        duration_minutes: 0,
+        duration_left_minutes: 0,
+        duration_right_minutes: 0
+      })
+      .select()
+      .single()
+    if (data) {
+      setActiveFeedingId(data.id)
+      setSessionStart(new Date(data.start_time).getTime())
+      return data.id
+    }
+    return null
+  }
+
+  const toggleSide = async (side: 'left' | 'right') => {
     const nowMs = Date.now()
     if (activeSide === side) {
-      // stop this side
       const elapsed = (nowMs - (activeSince ?? nowMs)) / 1000
       if (side === 'left') setLeftSeconds((s) => s + elapsed)
       else setRightSeconds((s) => s + elapsed)
@@ -63,7 +119,6 @@ export default function FeedingCard({ childId }: { childId: string }) {
       setActiveSince(null)
       return
     }
-    // switch from the other side, or start fresh
     if (activeSide) {
       const elapsed = (nowMs - (activeSince ?? nowMs)) / 1000
       if (activeSide === 'left') setLeftSeconds((s) => s + elapsed)
@@ -72,76 +127,99 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setActiveSide(side)
     setActiveSince(nowMs)
     setLastSide(side)
-    setSessionStart((prev) => prev ?? nowMs)
+    await ensureRow()
   }
 
-  const reset = () => {
+  const resetLocal = () => {
     setLeftSeconds(0)
     setRightSeconds(0)
     setActiveSide(null)
     setActiveSince(null)
     setLastSide(null)
     setSessionStart(null)
+    setActiveFeedingId(null)
     setNotes('')
     setAmount('')
   }
 
-  const save = async () => {
-    if (!user) return
-    setBusy(true)
-
-    if (type === 'breast') {
+  // Persist current progress but leave the session open — the timer on the
+  // card keeps going, and reopening this modal (from any device) resumes it.
+  const saveProgress = async () => {
+    if (activeSide) {
+      // stop the ticking side locally so the saved numbers and the UI agree
+      const elapsed = (Date.now() - (activeSince ?? Date.now())) / 1000
+      if (activeSide === 'left') setLeftSeconds((s) => s + elapsed)
+      else setRightSeconds((s) => s + elapsed)
+      setActiveSide(null)
+      setActiveSince(null)
+    }
+    if (activeFeedingId) {
+      setBusy(true)
       const finalLeft = liveLeft
       const finalRight = liveRight
-      await supabase.from('feedings').insert({
-        child_id: childId,
-        logged_by: user.id,
-        type: 'breast',
-        side: lastSide,
-        duration_minutes: Math.round(((finalLeft + finalRight) / 60) * 10) / 10,
-        duration_left_minutes: Math.round((finalLeft / 60) * 10) / 10,
-        duration_right_minutes: Math.round((finalRight / 60) * 10) / 10,
-        amount_ml: null,
-        start_time: new Date(sessionStart ?? Date.now()).toISOString(),
-        notes: notes || null
-      })
-    } else if (type === 'bottle') {
-      await supabase.from('feedings').insert({
-        child_id: childId,
-        logged_by: user.id,
-        type: 'bottle',
-        side: null,
-        amount_ml: amount ? Number(amount) : null,
-        duration_minutes: null,
-        duration_left_minutes: null,
-        duration_right_minutes: null,
-        start_time: new Date().toISOString(),
-        notes: notes || null
-      })
-    } else {
-      await supabase.from('feedings').insert({
-        child_id: childId,
-        logged_by: user.id,
-        type: 'solid',
-        side: null,
-        amount_ml: null,
-        duration_minutes: null,
-        duration_left_minutes: null,
-        duration_right_minutes: null,
-        start_time: new Date().toISOString(),
-        notes: notes || null
-      })
+      await supabase
+        .from('feedings')
+        .update({
+          side: lastSide,
+          duration_minutes: Math.round(((finalLeft + finalRight) / 60) * 10) / 10,
+          duration_left_minutes: Math.round((finalLeft / 60) * 10) / 10,
+          duration_right_minutes: Math.round((finalRight / 60) * 10) / 10,
+          notes: notes || null
+        })
+        .eq('id', activeFeedingId)
+      setBusy(false)
     }
+    setOpen(false)
+  }
 
+  const finishBreastfeed = async () => {
+    if (!user) return
+    setBusy(true)
+    const finalLeft = liveLeft
+    const finalRight = liveRight
+    const id = activeFeedingId ?? (await ensureRow())
+    if (id) {
+      await supabase
+        .from('feedings')
+        .update({
+          side: lastSide,
+          duration_minutes: Math.round(((finalLeft + finalRight) / 60) * 10) / 10,
+          duration_left_minutes: Math.round((finalLeft / 60) * 10) / 10,
+          duration_right_minutes: Math.round((finalRight / 60) * 10) / 10,
+          notes: notes || null,
+          end_time: new Date().toISOString()
+        })
+        .eq('id', id)
+    }
     setBusy(false)
     setOpen(false)
-    reset()
+    resetLocal()
   }
 
-  const closeAndReset = () => {
+  const saveBottleOrSolid = async () => {
+    if (!user) return
+    setBusy(true)
+    const nowIso = new Date().toISOString()
+    await supabase.from('feedings').insert({
+      child_id: childId,
+      logged_by: user.id,
+      type,
+      side: null,
+      amount_ml: type === 'bottle' && amount ? Number(amount) : null,
+      duration_minutes: null,
+      duration_left_minutes: null,
+      duration_right_minutes: null,
+      start_time: nowIso,
+      end_time: nowIso,
+      notes: notes || null
+    })
+    setBusy(false)
     setOpen(false)
-    reset()
+    setAmount('')
+    setNotes('')
   }
+
+  const closeModal = () => setOpen(false)
 
   const totalSeconds = liveLeft + liveRight
   const total = fmtMinSec(totalSeconds)
@@ -154,13 +232,31 @@ export default function FeedingCard({ childId }: { childId: string }) {
         <h3 className="text-base">Feeding</h3>
         <span className="text-2xl">🍽️</span>
       </div>
-      <p className="text-parchment-300 text-sm">Log a feed</p>
-      <button className="btn-secondary" onClick={() => setOpen(true)}>
-        Log feeding
-      </button>
+
+      {activeFeedingId ? (
+        <>
+          <p className="text-3xl font-display tabular-nums">{formatElapsed(new Date(sessionStart ?? Date.now()).toISOString(), now)}</p>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setType('breast')
+              setOpen(true)
+            }}
+          >
+            Continue feeding
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-parchment-300 text-sm">Log a feed</p>
+          <button className="btn-secondary" onClick={() => setOpen(true)}>
+            Log feeding
+          </button>
+        </>
+      )}
 
       {open && (
-        <Modal title="Log feeding" onClose={closeAndReset}>
+        <Modal title="Log feeding" onClose={closeModal}>
           <div className="flex flex-col gap-4">
             <div>
               <label className="label">Type</label>
@@ -169,6 +265,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
                   <button
                     key={t}
                     onClick={() => setType(t)}
+                    disabled={!!activeFeedingId && t !== 'breast'}
                     className={type === t ? 'btn-primary flex-1 capitalize' : 'btn-secondary flex-1 capitalize'}
                   >
                     {t}
@@ -179,7 +276,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
             {type === 'breast' && (
               <>
-                {!activeSide && leftSeconds === 0 && rightSeconds === 0 && previousLastSide && (
+                {!activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && previousLastSide && (
                   <div className="rounded-xl bg-night-950 border border-night-700 px-4 py-2 text-sm flex items-center justify-between">
                     <span className="text-parchment-300">Last side</span>
                     <span className="capitalize text-parchment-100 font-semibold">{previousLastSide}</span>
@@ -242,9 +339,20 @@ export default function FeedingCard({ childId }: { childId: string }) {
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
 
-            <button className="btn-primary" onClick={save} disabled={busy}>
-              Save
-            </button>
+            {type === 'breast' ? (
+              <div className="flex flex-col gap-2">
+                <button className="btn-primary" onClick={finishBreastfeed} disabled={busy}>
+                  Done feeding
+                </button>
+                <button className="btn-secondary" onClick={saveProgress} disabled={busy}>
+                  Save — keep feeding
+                </button>
+              </div>
+            ) : (
+              <button className="btn-primary" onClick={saveBottleOrSolid} disabled={busy}>
+                Save
+              </button>
+            )}
           </div>
         </Modal>
       )}

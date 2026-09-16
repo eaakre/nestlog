@@ -143,6 +143,7 @@ create table if not exists feedings (
   duration_left_minutes numeric,
   duration_right_minutes numeric,
   start_time timestamptz not null,
+  end_time timestamptz,
   notes text,
   created_at timestamptz not null default now()
 );
