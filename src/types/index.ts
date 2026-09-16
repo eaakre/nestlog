@@ -48,9 +48,11 @@ export type Feeding = {
   child_id: string
   logged_by: string
   type: FeedingType
-  side: Side | null
+  side: Side | null // for breast feeds, the LAST side used
   amount_ml: number | null
-  duration_minutes: number | null
+  duration_minutes: number | null // total across both sides, for breast feeds
+  duration_left_minutes: number | null
+  duration_right_minutes: number | null
   start_time: string
   notes: string | null
   created_at: string

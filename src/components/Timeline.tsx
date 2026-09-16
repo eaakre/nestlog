@@ -21,7 +21,13 @@ function describe(entry: TimelineEntry): string {
     case 'feeding': {
       const f = entry.data as Feeding
       if (f.type === 'bottle') return `Bottle${f.amount_ml ? ` · ${f.amount_ml}ml` : ''}`
-      if (f.type === 'breast') return `Breastfed${f.side ? ` · ${f.side}` : ''}${f.duration_minutes ? ` · ${formatDurationMinutes(f.duration_minutes)}` : ''}`
+      if (f.type === 'breast') {
+        const parts: string[] = []
+        if (f.duration_left_minutes) parts.push(`L ${formatDurationMinutes(f.duration_left_minutes)}`)
+        if (f.duration_right_minutes) parts.push(`R ${formatDurationMinutes(f.duration_right_minutes)}`)
+        const breakdown = parts.length ? ` · ${parts.join(' + ')}` : f.duration_minutes ? ` · ${formatDurationMinutes(f.duration_minutes)}` : ''
+        return `Breastfed${breakdown}${f.side ? ` · last ${f.side}` : ''}`
+      }
       return 'Solid food'
     }
     case 'diaper': {

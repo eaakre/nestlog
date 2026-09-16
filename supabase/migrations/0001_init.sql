@@ -140,6 +140,8 @@ create table if not exists feedings (
   side text check (side in ('left', 'right', 'both')),
   amount_ml numeric,
   duration_minutes numeric,
+  duration_left_minutes numeric,
+  duration_right_minutes numeric,
   start_time timestamptz not null,
   notes text,
   created_at timestamptz not null default now()
