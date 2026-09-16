@@ -10,34 +10,40 @@ const ICONS: Record<string, string> = {
   pumping: '🍼'
 }
 
-function describe(entry: TimelineEntry): string {
+const SLEEP_BAR_CAP_MINUTES = 12 * 60 // widest bar represents a 12h stretch
+
+function describe(entry: TimelineEntry): { text: string; sub?: string; barPct?: number } {
   switch (entry.kind) {
     case 'sleep': {
       const s = entry.data as SleepSession
-      if (!s.end_time) return 'Sleep started'
+      if (!s.end_time) return { text: 'Sleep started' }
       const mins = (new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / 60000
-      return `Slept ${formatDurationMinutes(mins)}`
+      return {
+        text: `${formatClock(s.start_time)} – ${formatClock(s.end_time)}`,
+        sub: formatDurationMinutes(mins) ?? undefined,
+        barPct: Math.min(100, (mins / SLEEP_BAR_CAP_MINUTES) * 100)
+      }
     }
     case 'feeding': {
       const f = entry.data as Feeding
-      if (f.type === 'bottle') return `Bottle${f.amount_ml ? ` · ${f.amount_ml}ml` : ''}`
+      if (f.type === 'bottle') return { text: `Bottle${f.amount_ml ? ` · ${f.amount_ml}ml` : ''}` }
       if (f.type === 'breast') {
         const parts: string[] = []
         if (f.duration_left_minutes) parts.push(`L ${formatDurationMinutes(f.duration_left_minutes)}`)
         if (f.duration_right_minutes) parts.push(`R ${formatDurationMinutes(f.duration_right_minutes)}`)
         const breakdown = parts.length ? ` · ${parts.join(' + ')}` : f.duration_minutes ? ` · ${formatDurationMinutes(f.duration_minutes)}` : ''
-        return `Breastfed${breakdown}${f.side ? ` · last ${f.side}` : ''}`
+        return { text: `Breastfed${breakdown}${f.side ? ` · last ${f.side}` : ''}` }
       }
-      return 'Solid food'
+      return { text: 'Solid food' }
     }
     case 'diaper': {
       const d = entry.data as Diaper
-      return `Diaper · ${d.type}`
+      return { text: `Diaper · ${d.type === 'both' ? 'mix' : d.type}` }
     }
     case 'pumping': {
       const p = entry.data as PumpingSession
-      if (!p.end_time) return 'Pumping started'
-      return `Pumped${p.amount_ml ? ` · ${p.amount_ml}ml` : ''}${p.side ? ` · ${p.side}` : ''}`
+      if (!p.end_time) return { text: 'Pumping started' }
+      return { text: `Pumped${p.amount_ml ? ` · ${p.amount_ml}ml` : ''}${p.side ? ` · ${p.side}` : ''}` }
     }
   }
 }
@@ -86,17 +92,26 @@ export default function Timeline({ childId }: { childId: string }) {
 
   return (
     <ul className="flex flex-col gap-2">
-      {entries.map((entry) => (
-        <li key={`${entry.kind}-${entry.id}`} className="flex items-center gap-3 rounded-xl bg-night-800/60 px-4 py-3">
-          <span className="text-xl">{ICONS[entry.kind]}</span>
-          <div className="flex-1">
-            <p className="text-parchment-100 text-sm">{describe(entry)}</p>
-            <p className="text-parchment-300 text-xs">
-              {formatClock(entry.time)} · {formatRelative(entry.time)}
-            </p>
-          </div>
-        </li>
-      ))}
+      {entries.map((entry) => {
+        const { text, sub, barPct } = describe(entry)
+        return (
+          <li key={`${entry.kind}-${entry.id}`} className="flex items-center gap-3 rounded-xl bg-night-800/60 px-4 py-3">
+            <span className="text-xl">{ICONS[entry.kind]}</span>
+            <div className="flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-parchment-100 text-sm">{text}</p>
+                {sub && <p className="text-parchment-200 text-xs font-medium shrink-0">{sub}</p>}
+              </div>
+              {barPct != null && (
+                <div className="h-1.5 rounded-full bg-night-700 mt-1.5 overflow-hidden">
+                  <div className="h-full rounded-full bg-night-600" style={{ width: `${Math.max(4, barPct)}%` }} />
+                </div>
+              )}
+              <p className="text-parchment-300 text-xs mt-1">{formatRelative(entry.time)}</p>
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 }
