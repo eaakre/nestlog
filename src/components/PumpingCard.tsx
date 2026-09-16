@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { formatElapsed } from '../lib/format'
+import { describePumping } from '../lib/describe'
 import Modal from './Modal'
+import SectionHistory from './SectionHistory'
 import type { PumpingSession, Side } from '../types'
 
 export default function PumpingCard({ childId }: { childId: string }) {
@@ -157,6 +159,8 @@ export default function PumpingCard({ childId }: { childId: string }) {
           </div>
         </Modal>
       )}
+
+      <SectionHistory<PumpingSession> table="pumping_sessions" childId={childId} timeField="start_time" describe={describePumping} icon="🍼" />
     </div>
   )
 }

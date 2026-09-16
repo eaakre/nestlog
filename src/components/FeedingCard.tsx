@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { formatElapsed } from '../lib/format'
+import { describeFeeding } from '../lib/describe'
 import Modal from './Modal'
+import SectionHistory from './SectionHistory'
 import type { FeedingType, Side, Feeding } from '../types'
 
 type ActiveSide = 'left' | 'right' | null
@@ -356,6 +358,8 @@ export default function FeedingCard({ childId }: { childId: string }) {
           </div>
         </Modal>
       )}
+
+      <SectionHistory<Feeding> table="feedings" childId={childId} timeField="start_time" describe={describeFeeding} icon="🍽️" />
     </div>
   )
 }

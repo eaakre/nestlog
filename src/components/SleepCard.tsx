@@ -3,7 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../lib/format'
+import { describeSleep } from '../lib/describe'
 import Modal from './Modal'
+import SectionHistory from './SectionHistory'
 import type { SleepSession } from '../types'
 
 export default function SleepCard({ childId }: { childId: string }) {
@@ -141,6 +143,8 @@ export default function SleepCard({ childId }: { childId: string }) {
           </div>
         </Modal>
       )}
+
+      <SectionHistory<SleepSession> table="sleep_sessions" childId={childId} timeField="start_time" describe={describeSleep} icon="🌙" />
     </div>
   )
 }

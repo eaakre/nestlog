@@ -4,7 +4,6 @@ import SleepCard from '../components/SleepCard'
 import FeedingCard from '../components/FeedingCard'
 import DiaperCard from '../components/DiaperCard'
 import PumpingCard from '../components/PumpingCard'
-import Timeline from '../components/Timeline'
 
 export default function Dashboard() {
   const { activeChild, children_, setActiveChildId } = useChildren()
@@ -37,15 +36,12 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <SleepCard childId={activeChild.id} />
         <PumpingCard childId={activeChild.id} />
         <FeedingCard childId={activeChild.id} />
         <DiaperCard childId={activeChild.id} />
       </div>
-
-      <h2 className="text-lg mb-3">Today</h2>
-      <Timeline childId={activeChild.id} />
     </div>
   )
 }

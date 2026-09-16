@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { DiaperType } from '../types'
+import { describeDiaper } from '../lib/describe'
+import SectionHistory from './SectionHistory'
+import type { Diaper, DiaperType } from '../types'
 
 export default function DiaperCard({ childId }: { childId: string }) {
   const { user } = useAuth()
@@ -37,6 +39,8 @@ export default function DiaperCard({ childId }: { childId: string }) {
           Both
         </button>
       </div>
+
+      <SectionHistory<Diaper> table="diapers" childId={childId} timeField="time" describe={describeDiaper} icon="🧷" />
     </div>
   )
 }
