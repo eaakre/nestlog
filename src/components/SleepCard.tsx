@@ -6,6 +6,7 @@ import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue, formatDura
 import { describeSleep } from '../lib/describe'
 import Modal from './Modal'
 import SectionHistory from './SectionHistory'
+import TrackerCard from './TrackerCard'
 import type { SleepSession } from '../types'
 
 export default function SleepCard({ childId }: { childId: string }) {
@@ -94,11 +95,7 @@ export default function SleepCard({ childId }: { childId: string }) {
   }
 
   return (
-    <div className="card flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base">Sleep</h3>
-        <span className="text-2xl">🌙</span>
-      </div>
+    <TrackerCard title="Sleep" emoji="🌙" color="sleep">
       {active ? (
         <>
           <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
@@ -145,6 +142,6 @@ export default function SleepCard({ childId }: { childId: string }) {
       )}
 
       <SectionHistory<SleepSession> table="sleep_sessions" childId={childId} timeField="start_time" describe={describeSleep} icon="🌙" />
-    </div>
+    </TrackerCard>
   )
 }

@@ -29,6 +29,12 @@ export default {
         amber: {
           400: '#E8BE7B',
           500: '#DDA85B'
+        },
+        header: {
+          sleep: '#AEE0EF',
+          pump: '#F2A79E',
+          feed: '#F0C24C',
+          diaper: '#F2ECD8'
         }
       },
       fontFamily: {

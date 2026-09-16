@@ -6,6 +6,7 @@ import { formatElapsed } from '../lib/format'
 import { describePumping } from '../lib/describe'
 import Modal from './Modal'
 import SectionHistory from './SectionHistory'
+import TrackerCard from './TrackerCard'
 import type { PumpingSession, Side } from '../types'
 
 export default function PumpingCard({ childId }: { childId: string }) {
@@ -94,11 +95,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
   }
 
   return (
-    <div className="card flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base">Pumping</h3>
-        <span className="text-2xl">🍼</span>
-      </div>
+    <TrackerCard title="Pumping" emoji="🍼" color="pump">
       {active ? (
         <>
           <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
@@ -161,6 +158,6 @@ export default function PumpingCard({ childId }: { childId: string }) {
       )}
 
       <SectionHistory<PumpingSession> table="pumping_sessions" childId={childId} timeField="start_time" describe={describePumping} icon="🍼" />
-    </div>
+    </TrackerCard>
   )
 }

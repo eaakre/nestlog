@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { describeDiaper } from '../lib/describe'
 import SectionHistory from './SectionHistory'
+import TrackerCard from './TrackerCard'
 import type { Diaper, DiaperType } from '../types'
 
 export default function DiaperCard({ childId }: { childId: string }) {
@@ -22,11 +23,7 @@ export default function DiaperCard({ childId }: { childId: string }) {
   }
 
   return (
-    <div className="card flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base">Diaper</h3>
-        <span className="text-2xl">🧷</span>
-      </div>
+    <TrackerCard title="Diaper" emoji="🧷" color="diaper">
       <p className="text-parchment-300 text-sm">Tap to log</p>
       <div className="grid grid-cols-3 gap-2">
         <button className="btn-secondary" onClick={() => log('wet')} disabled={busy === 'wet'}>
@@ -41,6 +38,6 @@ export default function DiaperCard({ childId }: { childId: string }) {
       </div>
 
       <SectionHistory<Diaper> table="diapers" childId={childId} timeField="time" describe={describeDiaper} icon="🧷" />
-    </div>
+    </TrackerCard>
   )
 }
