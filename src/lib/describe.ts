@@ -29,7 +29,18 @@ export function describeFeeding(f: Feeding): EntryDescription {
 }
 
 export function describeDiaper(d: Diaper): EntryDescription {
-  return { text: `Diaper · ${d.type === 'both' ? 'mix' : d.type}` }
+  const status: string[] = []
+  if (d.wet) status.push('wet')
+  if (d.dirty) status.push('dirty')
+  const text = `Diaper · ${status.length ? status.join(' + ') : 'dry'}`
+
+  const extras: string[] = []
+  if (d.dirty && d.texture) extras.push(d.texture)
+  if (d.dirty && d.color) extras.push(d.color)
+  if (d.blowout) extras.push('blowout')
+  if (d.diaper_rash) extras.push('rash')
+
+  return { text, sub: extras.length ? extras.join(', ') : undefined }
 }
 
 export function describePumping(p: PumpingSession): EntryDescription {

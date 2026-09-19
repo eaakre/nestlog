@@ -164,7 +164,12 @@ create table if not exists diapers (
   id uuid primary key default gen_random_uuid(),
   child_id uuid not null references children(id) on delete cascade,
   logged_by uuid not null references profiles(id),
-  type text not null check (type in ('wet', 'dirty', 'both', 'dry')),
+  wet boolean not null default false,
+  dirty boolean not null default false,
+  texture text check (texture in ('runny', 'mucousy', 'mushy', 'solid', 'pebbles')),
+  color text check (color in ('black', 'green', 'yellow', 'brown', 'red', 'gray')),
+  blowout boolean not null default false,
+  diaper_rash boolean not null default false,
   time timestamptz not null,
   notes text,
   created_at timestamptz not null default now()

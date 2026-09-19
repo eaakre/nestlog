@@ -59,13 +59,19 @@ export type Feeding = {
   created_at: string
 }
 
-export type DiaperType = 'wet' | 'dirty' | 'both' | 'dry'
+export type DiaperTexture = 'runny' | 'mucousy' | 'mushy' | 'solid' | 'pebbles'
+export type DiaperColor = 'black' | 'green' | 'yellow' | 'brown' | 'red' | 'gray'
 
 export type Diaper = {
   id: string
   child_id: string
   logged_by: string
-  type: DiaperType
+  wet: boolean
+  dirty: boolean // "dry" is simply wet === false && dirty === false
+  texture: DiaperTexture | null
+  color: DiaperColor | null
+  blowout: boolean
+  diaper_rash: boolean
   time: string
   notes: string | null
   created_at: string
