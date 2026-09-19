@@ -95,7 +95,7 @@ export default function SleepCard({ childId }: { childId: string }) {
   }
 
   return (
-    <TrackerCard title="Sleep" emoji="🌙" color="sleep">
+    <TrackerCard title="Sleep" color="sleep" onAdd={active ? openModal : start}>
       {active ? (
         <>
           <p className="text-4xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>

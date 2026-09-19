@@ -5,6 +5,7 @@ import { useNow } from '../lib/useNow'
 import { formatElapsed } from '../lib/format'
 import { describeFeeding } from '../lib/describe'
 import Modal from './Modal'
+import TypeChooser from './TypeChooser'
 import SectionHistory from './SectionHistory'
 import TrackerCard from './TrackerCard'
 import type { FeedingType, Side, Feeding } from '../types'
@@ -20,6 +21,7 @@ function fmtMinSec(totalSeconds: number) {
 export default function FeedingCard({ childId }: { childId: string }) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
+  const [showChooser, setShowChooser] = useState(false)
   const [type, setType] = useState<FeedingType>('breast')
   const [busy, setBusy] = useState(false)
   const now = useNow()
@@ -224,54 +226,59 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
   const closeModal = () => setOpen(false)
 
+  const handleAdd = () => {
+    if (activeFeedingId) {
+      setType('breast')
+      setOpen(true)
+    } else {
+      setShowChooser(true)
+    }
+  }
+
+  const chooseType = (t: FeedingType) => {
+    setType(t)
+    setShowChooser(false)
+    setOpen(true)
+  }
+
   const totalSeconds = liveLeft + liveRight
   const total = fmtMinSec(totalSeconds)
   const leftT = fmtMinSec(liveLeft)
   const rightT = fmtMinSec(liveRight)
 
   return (
-    <TrackerCard title="Feeding" emoji="🍽️" color="feed">
+    <TrackerCard title="Feeding" color="feed" onAdd={handleAdd}>
       {activeFeedingId ? (
         <>
           <p className="text-4xl font-display tabular-nums">{formatElapsed(new Date(sessionStart ?? Date.now()).toISOString(), now)}</p>
-          <button
-            className="btn-primary"
-            onClick={() => {
-              setType('breast')
-              setOpen(true)
-            }}
-          >
+          <button className="btn-primary" onClick={handleAdd}>
             Continue feeding
           </button>
         </>
       ) : (
         <>
           <p className="text-parchment-200 text-base">Log a feed</p>
-          <button className="btn-secondary" onClick={() => setOpen(true)}>
+          <button className="btn-secondary" onClick={handleAdd}>
             Log feeding
           </button>
         </>
       )}
 
-      {open && (
-        <Modal title="Log feeding" onClose={closeModal}>
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="label">Type</label>
-              <div className="flex gap-2">
-                {(['breast', 'bottle', 'solid'] as FeedingType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setType(t)}
-                    disabled={!!activeFeedingId && t !== 'breast'}
-                    className={type === t ? 'btn-primary flex-1 capitalize' : 'btn-secondary flex-1 capitalize'}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {showChooser && (
+        <TypeChooser
+          title="Log feeding"
+          onClose={() => setShowChooser(false)}
+          options={[
+            { key: 'breast', label: 'Breastfeed', icon: '🤱', onSelect: () => chooseType('breast') },
+            { key: 'bottle', label: 'Bottle Feed', icon: '🍼', onSelect: () => chooseType('bottle') },
+            { key: 'solid', label: 'Solid Food', icon: '🥣', onSelect: () => chooseType('solid') }
+          ]}
+        />
+      )}
 
+      {open && (
+        <Modal title={type === 'breast' ? 'Breastfeed' : type === 'bottle' ? 'Bottle Feed' : 'Solid Food'} onClose={closeModal}>
+          <div className="flex flex-col gap-4">
             {type === 'breast' && (
               <>
                 {!activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && previousLastSide && (

@@ -95,7 +95,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
   }
 
   return (
-    <TrackerCard title="Pumping" emoji="🍼" color="pump">
+    <TrackerCard title="Pumping" color="pump" onAdd={active ? openModal : start}>
       {active ? (
         <>
           <p className="text-4xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
