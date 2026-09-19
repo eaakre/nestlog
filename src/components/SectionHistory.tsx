@@ -59,26 +59,26 @@ export default function SectionHistory<T extends { id: string }>({
         {visible.map((row) => {
           const { text, sub, barPct } = describe(row)
           return (
-            <li key={row.id} className="flex items-center gap-2">
-              <span className="text-base shrink-0">{icon}</span>
+            <li key={row.id} className="flex items-center gap-2.5">
+              <span className="text-xl shrink-0">{icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-parchment-100 text-sm truncate">{text}</p>
-                  {sub && <p className="text-parchment-200 text-xs font-medium shrink-0">{sub}</p>}
+                  <p className="text-parchment-100 text-base truncate">{text}</p>
+                  {sub && <p className="text-parchment-100 text-sm font-semibold shrink-0">{sub}</p>}
                 </div>
                 {barPct != null && (
                   <div className="h-1 rounded-full bg-night-700 mt-1 overflow-hidden">
                     <div className="h-full rounded-full bg-night-600" style={{ width: `${Math.max(4, barPct)}%` }} />
                   </div>
                 )}
-                <p className="text-parchment-300 text-xs mt-0.5">{formatRelative(row[timeField] as unknown as string)}</p>
+                <p className="text-parchment-300 text-sm mt-0.5">{formatRelative(row[timeField] as unknown as string)}</p>
               </div>
             </li>
           )
         })}
       </ul>
       {rows.length > limit && (
-        <button className="text-xs text-dusk-400 hover:text-dusk-300 text-left" onClick={() => setExpanded((e) => !e)}>
+        <button className="text-sm font-medium text-dusk-400 hover:text-dusk-300 text-left" onClick={() => setExpanded((e) => !e)}>
           {expanded ? 'Show less' : `Show ${rows.length - limit} more`}
         </button>
       )}

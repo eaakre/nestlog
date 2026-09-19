@@ -98,14 +98,14 @@ export default function PumpingCard({ childId }: { childId: string }) {
     <TrackerCard title="Pumping" emoji="🍼" color="pump">
       {active ? (
         <>
-          <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
+          <p className="text-4xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
           <button className="btn-primary" onClick={openModal} disabled={busy}>
             Finish
           </button>
         </>
       ) : (
         <>
-          <p className="text-parchment-300 text-sm">Not pumping</p>
+          <p className="text-parchment-200 text-base">Not pumping</p>
           <button className="btn-secondary" onClick={start} disabled={busy}>
             Start pumping
           </button>

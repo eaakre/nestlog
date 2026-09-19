@@ -233,7 +233,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
     <TrackerCard title="Feeding" emoji="🍽️" color="feed">
       {activeFeedingId ? (
         <>
-          <p className="text-3xl font-display tabular-nums">{formatElapsed(new Date(sessionStart ?? Date.now()).toISOString(), now)}</p>
+          <p className="text-4xl font-display tabular-nums">{formatElapsed(new Date(sessionStart ?? Date.now()).toISOString(), now)}</p>
           <button
             className="btn-primary"
             onClick={() => {
@@ -246,7 +246,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
         </>
       ) : (
         <>
-          <p className="text-parchment-300 text-sm">Log a feed</p>
+          <p className="text-parchment-200 text-base">Log a feed</p>
           <button className="btn-secondary" onClick={() => setOpen(true)}>
             Log feeding
           </button>

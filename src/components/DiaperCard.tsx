@@ -24,7 +24,7 @@ export default function DiaperCard({ childId }: { childId: string }) {
 
   return (
     <TrackerCard title="Diaper" emoji="🧷" color="diaper">
-      <p className="text-parchment-300 text-sm">Tap to log</p>
+      <p className="text-parchment-200 text-base">Tap to log</p>
       <div className="grid grid-cols-3 gap-2">
         <button className="btn-secondary" onClick={() => log('wet')} disabled={busy === 'wet'}>
           Wet

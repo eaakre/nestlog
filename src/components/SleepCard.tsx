@@ -98,14 +98,14 @@ export default function SleepCard({ childId }: { childId: string }) {
     <TrackerCard title="Sleep" emoji="🌙" color="sleep">
       {active ? (
         <>
-          <p className="text-3xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
+          <p className="text-4xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
           <button className="btn-primary" onClick={openModal} disabled={busy}>
             Wake up
           </button>
         </>
       ) : (
         <>
-          <p className="text-parchment-300 text-sm">Not sleeping</p>
+          <p className="text-parchment-200 text-base">Not sleeping</p>
           <button className="btn-secondary" onClick={start} disabled={busy}>
             Start sleep
           </button>

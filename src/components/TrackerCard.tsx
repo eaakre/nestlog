@@ -23,8 +23,8 @@ export default function TrackerCard({
   return (
     <div className="rounded-card overflow-hidden border border-night-700 bg-night-800">
       <div className={`${HEADER_BG[color]} px-5 py-4 flex items-center justify-between`}>
-        <h3 className="font-display text-lg text-night-950">{title}</h3>
-        <span className="text-2xl">{emoji}</span>
+        <h3 className="font-display text-3xl text-night-950">{title}</h3>
+        <span className="text-3xl">{emoji}</span>
       </div>
       <div className="p-5 flex flex-col gap-3">{children}</div>
     </div>
