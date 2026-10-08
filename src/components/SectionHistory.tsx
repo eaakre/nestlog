@@ -1,53 +1,32 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState } from 'react'
 import { formatRelative } from '../lib/format'
+import { useUnit, type Unit } from '../lib/units'
+import { useChildren } from '../contexts/ChildContext'
 import type { EntryDescription } from '../lib/describe'
 
-type Props<T extends { id: string }> = {
-  table: string
-  childId: string
+type Props<T extends { id: string; logged_by: string }> = {
+  rows: T[]
   timeField: keyof T & string
-  describe: (row: T) => EntryDescription
+  describe: (row: T, unit: Unit) => EntryDescription
   icon: string
   limit?: number
+  onSelect?: (row: T) => void
+  canSelect?: (row: T) => boolean
 }
 
-export default function SectionHistory<T extends { id: string }>({
-  table,
-  childId,
+export default function SectionHistory<T extends { id: string; logged_by: string }>({
+  rows,
   timeField,
   describe,
   icon,
-  limit = 3
+  limit = 3,
+  onSelect,
+  canSelect
 }: Props<T>) {
-  const [rows, setRows] = useState<T[]>([])
   const [expanded, setExpanded] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      const { data } = await supabase
-        .from(table)
-        .select('*')
-        .eq('child_id', childId)
-        .order(timeField, { ascending: false })
-        .limit(20)
-      if (!cancelled) setRows((data as T[]) ?? [])
-    }
-
-    load()
-    const channel = supabase
-      .channel(`${table}-hist-${childId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table, filter: `child_id=eq.${childId}` }, load)
-      .subscribe()
-
-    return () => {
-      cancelled = true
-      supabase.removeChannel(channel)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table, childId, timeField])
+  const { unit } = useUnit()
+  const { members } = useChildren()
+  const showNames = Object.keys(members).length > 1
 
   if (rows.length === 0) return null
 
@@ -55,11 +34,14 @@ export default function SectionHistory<T extends { id: string }>({
 
   return (
     <div className="mt-1 pt-3 border-t border-night-700 flex flex-col gap-2">
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1">
         {visible.map((row) => {
-          const { text, sub, barPct } = describe(row)
-          return (
-            <li key={row.id} className="flex items-center gap-2.5">
+          const { text, sub, barPct } = describe(row, unit)
+          const selectable = !!onSelect && (canSelect ? canSelect(row) : true)
+          const who = showNames ? members[row.logged_by] : undefined
+
+          const content = (
+            <>
               <span className="text-xl shrink-0">{icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
@@ -71,8 +53,28 @@ export default function SectionHistory<T extends { id: string }>({
                     <div className="h-full rounded-full bg-night-600" style={{ width: `${Math.max(4, barPct)}%` }} />
                   </div>
                 )}
-                <p className="text-parchment-300 text-sm mt-0.5">{formatRelative(row[timeField] as unknown as string)}</p>
+                <p className="text-parchment-300 text-sm mt-0.5">
+                  {formatRelative(row[timeField] as unknown as string)}
+                  {who ? ` · ${who}` : ''}
+                </p>
               </div>
+              {selectable && <span className="text-parchment-300 text-2xl shrink-0">›</span>}
+            </>
+          )
+
+          return (
+            <li key={row.id}>
+              {selectable ? (
+                <button
+                  type="button"
+                  onClick={() => onSelect!(row)}
+                  className="w-full flex items-center gap-2.5 text-left rounded-xl px-1 py-1.5 hover:bg-night-700/50"
+                >
+                  {content}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2.5 px-1 py-1.5">{content}</div>
+              )}
             </li>
           )
         })}

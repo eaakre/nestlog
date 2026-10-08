@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
+import { useRecentRows } from '../lib/useRecentRows'
 import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../lib/format'
 import { describeSleep } from '../lib/describe'
 import Modal from './Modal'
 import SectionHistory from './SectionHistory'
 import TrackerCard from './TrackerCard'
+import LastSummary from './LastSummary'
+import SleepEditor from './editors/SleepEditor'
 import type { SleepSession } from '../types'
 
 export default function SleepCard({ childId }: { childId: string }) {
@@ -14,10 +17,12 @@ export default function SleepCard({ childId }: { childId: string }) {
   const [active, setActive] = useState<SleepSession | null>(null)
   const [busy, setBusy] = useState(false)
   const now = useNow()
+  const { rows, reload } = useRecentRows<SleepSession>('sleep_sessions', childId, 'start_time')
 
   const [showModal, setShowModal] = useState(false)
   const [editStart, setEditStart] = useState('')
   const [notes, setNotes] = useState('')
+  const [editing, setEditing] = useState<SleepSession | null>(null)
 
   const loadActive = async () => {
     const { data } = await supabase
@@ -52,6 +57,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       start_time: new Date().toISOString()
     })
     setBusy(false)
+    reload()
   }
 
   const openModal = () => {
@@ -61,12 +67,9 @@ export default function SleepCard({ childId }: { childId: string }) {
     setShowModal(true)
   }
 
-  const liveMinutes = editStart
-    ? Math.max(0, (now - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000)
-    : 0
+  const liveMinutes = editStart ? Math.max(0, (now - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000) : 0
 
-  // Save without ending the sleep — just updates the start time / notes on the
-  // still-open session. The timer keeps counting.
+  // Save without ending the sleep — the timer keeps counting.
   const saveOnly = async () => {
     if (!active) return
     setBusy(true)
@@ -76,9 +79,10 @@ export default function SleepCard({ childId }: { childId: string }) {
       .eq('id', active.id)
     setBusy(false)
     setShowModal(false)
+    loadActive()
+    reload()
   }
 
-  // Actually ends the sleep session.
   const wakeUp = async () => {
     if (!active) return
     setBusy(true)
@@ -92,10 +96,19 @@ export default function SleepCard({ childId }: { childId: string }) {
       .eq('id', active.id)
     setBusy(false)
     setShowModal(false)
+    loadActive()
+    reload()
   }
+
+  const lastDone = rows.find((r) => r.end_time)
+  const lastMinutes = lastDone?.end_time ? (new Date(lastDone.end_time).getTime() - new Date(lastDone.start_time).getTime()) / 60000 : 0
 
   return (
     <TrackerCard title="Sleep" color="sleep" onAdd={active ? openModal : start}>
+      {!active && lastDone && (
+        <LastSummary icon="🌙" label="Woke up" time={lastDone.end_time} value={formatDurationMinutes(lastMinutes) ?? ''} />
+      )}
+
       {active ? (
         <>
           <p className="text-4xl font-display tabular-nums">{formatElapsed(active.start_time, now)}</p>
@@ -104,12 +117,9 @@ export default function SleepCard({ childId }: { childId: string }) {
           </button>
         </>
       ) : (
-        <>
-          <p className="text-parchment-200 text-base">Not sleeping</p>
-          <button className="btn-secondary" onClick={start} disabled={busy}>
-            Start sleep
-          </button>
-        </>
+        <button className="btn-secondary" onClick={start} disabled={busy}>
+          Start sleep
+        </button>
       )}
 
       {showModal && (
@@ -141,7 +151,18 @@ export default function SleepCard({ childId }: { childId: string }) {
         </Modal>
       )}
 
-      <SectionHistory<SleepSession> table="sleep_sessions" childId={childId} timeField="start_time" describe={describeSleep} icon="🌙" />
+      <SectionHistory<SleepSession> rows={rows} timeField="start_time" describe={describeSleep} icon="🌙" onSelect={setEditing} />
+
+      {editing && (
+        <SleepEditor
+          entry={editing}
+          onClose={() => setEditing(null)}
+          onChanged={() => {
+            reload()
+            loadActive()
+          }}
+        />
+      )}
     </TrackerCard>
   )
 }

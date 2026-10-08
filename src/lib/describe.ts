@@ -1,4 +1,5 @@
 import { formatClock, formatDurationMinutes } from './format'
+import { formatVolume, type Unit } from './units'
 import type { SleepSession, Feeding, Diaper, PumpingSession } from '../types'
 
 export type EntryDescription = { text: string; sub?: string; barPct?: number }
@@ -15,8 +16,8 @@ export function describeSleep(s: SleepSession): EntryDescription {
   }
 }
 
-export function describeFeeding(f: Feeding): EntryDescription {
-  if (f.type === 'bottle') return { text: `Bottle${f.amount_ml ? ` · ${f.amount_ml}ml` : ''}` }
+export function describeFeeding(f: Feeding, unit: Unit): EntryDescription {
+  if (f.type === 'bottle') return { text: `Bottle${f.amount_ml ? ` · ${formatVolume(f.amount_ml, unit)}` : ''}` }
   if (f.type === 'breast') {
     if (!f.end_time) return { text: 'Feeding in progress' }
     const parts: string[] = []
@@ -43,7 +44,7 @@ export function describeDiaper(d: Diaper): EntryDescription {
   return { text, sub: extras.length ? extras.join(', ') : undefined }
 }
 
-export function describePumping(p: PumpingSession): EntryDescription {
+export function describePumping(p: PumpingSession, unit: Unit): EntryDescription {
   if (!p.end_time) return { text: 'Pumping started' }
-  return { text: `Pumped${p.amount_ml ? ` · ${p.amount_ml}ml` : ''}${p.side ? ` · ${p.side}` : ''}` }
+  return { text: `Pumped${p.amount_ml ? ` · ${formatVolume(p.amount_ml, unit)}` : ''}${p.side ? ` · ${p.side}` : ''}` }
 }

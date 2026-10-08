@@ -8,6 +8,7 @@ type ChildContextValue = {
   activeChild: Child | null
   setActiveChildId: (id: string) => void
   loading: boolean
+  members: Record<string, string>
   createChild: (name: string, birthDate: string | null) => Promise<{ error: string | null; child: Child | null }>
   createInvite: (childId: string) => Promise<{ code: string | null; error: string | null }>
   redeemInvite: (code: string) => Promise<{ error: string | null }>
@@ -114,6 +115,27 @@ export function ChildProvider({ children }: { children: ReactNode }) {
 
   const activeChild = childList.find((c) => c.id === activeChildId) ?? null
 
+  // user id -> display name, for "saved by" labels
+  const [members, setMembers] = useState<Record<string, string>>({})
+  const activeId = activeChild?.id ?? null
+  useEffect(() => {
+    if (!activeId) {
+      setMembers({})
+      return
+    }
+    supabase
+      .from('child_members')
+      .select('user_id, profiles(display_name)')
+      .eq('child_id', activeId)
+      .then(({ data }) => {
+        const map: Record<string, string> = {}
+        ;(data ?? []).forEach((row: any) => {
+          map[row.user_id] = row.profiles?.display_name ?? 'Someone'
+        })
+        setMembers(map)
+      })
+  }, [activeId])
+
   return (
     <ChildContext.Provider
       value={{
@@ -121,6 +143,7 @@ export function ChildProvider({ children }: { children: ReactNode }) {
         activeChild,
         setActiveChildId,
         loading,
+        members,
         createChild,
         createInvite,
         redeemInvite,

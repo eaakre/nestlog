@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ChildProvider, useChildren } from './contexts/ChildContext'
+import { UnitProvider } from './lib/units'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Onboarding from './pages/Onboarding'
@@ -75,7 +76,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ChildProvider>
-        <AppRoutes />
+        <UnitProvider>
+          <AppRoutes />
+        </UnitProvider>
       </ChildProvider>
     </AuthProvider>
   )

@@ -4,10 +4,14 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { formatElapsed } from '../lib/format'
 import { describeFeeding } from '../lib/describe'
+import { useRecentRows } from '../lib/useRecentRows'
+import { useUnit, mlToUnit, unitToMl } from '../lib/units'
 import Modal from './Modal'
 import TypeChooser from './TypeChooser'
 import SectionHistory from './SectionHistory'
 import TrackerCard from './TrackerCard'
+import LastSummary from './LastSummary'
+import FeedingEditor from './editors/FeedingEditor'
 import type { FeedingType, Side, Feeding } from '../types'
 
 type ActiveSide = 'left' | 'right' | null
@@ -24,7 +28,10 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const [showChooser, setShowChooser] = useState(false)
   const [type, setType] = useState<FeedingType>('breast')
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState<Feeding | null>(null)
   const now = useNow()
+  const { unit } = useUnit()
+  const { rows, reload } = useRecentRows<Feeding>('feedings', childId, 'start_time')
 
   // The DB row for an in-progress breastfeed session — created as soon as a
   // side starts timing, updated on every "Save", finalized (end_time set)
@@ -199,6 +206,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setBusy(false)
     setOpen(false)
     resetLocal()
+    reload()
   }
 
   const saveBottleOrSolid = async () => {
@@ -210,7 +218,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
       logged_by: user.id,
       type,
       side: null,
-      amount_ml: type === 'bottle' && amount ? Number(amount) : null,
+      amount_ml: type === 'bottle' && amount ? unitToMl(Number(amount), unit) : null,
       duration_minutes: null,
       duration_left_minutes: null,
       duration_right_minutes: null,
@@ -222,6 +230,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setOpen(false)
     setAmount('')
     setNotes('')
+    reload()
   }
 
   const closeModal = () => setOpen(false)
@@ -246,8 +255,33 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const leftT = fmtMinSec(liveLeft)
   const rightT = fmtMinSec(liveRight)
 
+  // Tapping a row opens its editor; an in-progress breastfeed resumes the live timer instead.
+  const onSelectRow = (r: Feeding) => {
+    if (r.type === 'breast' && !r.end_time) {
+      handleAdd()
+      return
+    }
+    setEditing(r)
+  }
+
+  const lastFeed = rows.find((r) => !(r.type === 'breast' && !r.end_time))
+  const summary = (() => {
+    if (!lastFeed) return null
+    if (lastFeed.type === 'bottle') {
+      return lastFeed.amount_ml != null
+        ? { value: String(mlToUnit(lastFeed.amount_ml, unit)), sub: unit as string | undefined, icon: '🍼' }
+        : { value: 'bottle', sub: undefined, icon: '🍼' }
+    }
+    if (lastFeed.type === 'breast') return { value: lastFeed.side ?? 'breast', sub: lastFeed.side ? 'last side' : undefined, icon: '🤱' }
+    return { value: 'solid', sub: undefined, icon: '🥣' }
+  })()
+
   return (
     <TrackerCard title="Feeding" color="feed" onAdd={handleAdd}>
+      {!activeFeedingId && lastFeed && summary && (
+        <LastSummary icon={summary.icon} label="Last feeding" time={lastFeed.end_time ?? lastFeed.start_time} value={summary.value} valueSub={summary.sub} />
+      )}
+
       {activeFeedingId ? (
         <>
           <p className="text-4xl font-display tabular-nums">{formatElapsed(new Date(sessionStart ?? Date.now()).toISOString(), now)}</p>
@@ -256,12 +290,9 @@ export default function FeedingCard({ childId }: { childId: string }) {
           </button>
         </>
       ) : (
-        <>
-          <p className="text-parchment-200 text-base">Log a feed</p>
-          <button className="btn-secondary" onClick={handleAdd}>
-            Log feeding
-          </button>
-        </>
+        <button className="btn-secondary" onClick={handleAdd}>
+          Log feeding
+        </button>
       )}
 
       {showChooser && (
@@ -334,7 +365,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
             {type === 'bottle' && (
               <div>
-                <label className="label">Amount (ml)</label>
+                <label className="label">Amount ({unit})</label>
                 <input className="input" type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
               </div>
             )}
@@ -362,7 +393,9 @@ export default function FeedingCard({ childId }: { childId: string }) {
         </Modal>
       )}
 
-      <SectionHistory<Feeding> table="feedings" childId={childId} timeField="start_time" describe={describeFeeding} icon="🍽️" />
+      <SectionHistory<Feeding> rows={rows} timeField="start_time" describe={describeFeeding} icon="🍽️" onSelect={onSelectRow} />
+
+      {editing && <FeedingEditor entry={editing} onClose={() => setEditing(null)} onChanged={reload} />}
     </TrackerCard>
   )
 }

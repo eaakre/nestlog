@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useChildren } from '../contexts/ChildContext'
+import { useUnit } from '../lib/units'
 import type { Profile } from '../types'
 
 export default function Settings() {
   const { user, profile, signOut } = useAuth()
   const { activeChild, createInvite } = useChildren()
+  const { unit, setUnit } = useUnit()
   const [members, setMembers] = useState<Profile[]>([])
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -70,6 +72,17 @@ export default function Settings() {
           {error && <p className="text-dusk-500 text-sm">{error}</p>}
         </div>
       )}
+
+      <div className="card mb-4 flex items-center justify-between">
+        <span className="text-parchment-100">Volume units</span>
+        <div className="flex gap-2">
+          {(['oz', 'ml'] as const).map((u) => (
+            <button key={u} className={unit === u ? 'btn-primary !px-4 !py-2' : 'btn-secondary !px-4 !py-2'} onClick={() => setUnit(u)}>
+              {u}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Link to="/onboarding" className="btn-secondary w-full mb-4">
         Add another child
