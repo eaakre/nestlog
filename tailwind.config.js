@@ -38,8 +38,8 @@ export default {
         }
       },
       fontFamily: {
-        display: ['"Fraunces"', 'Georgia', 'serif'],
-        body: ['"Inter"', 'system-ui', 'sans-serif']
+        display: ['"Lora"', 'Georgia', 'serif'],
+        body: ['"DM Sans"', 'system-ui', 'sans-serif']
       },
       borderRadius: {
         card: '20px'
