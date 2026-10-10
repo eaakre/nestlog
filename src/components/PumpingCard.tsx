@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { useRecentRows } from '../lib/useRecentRows'
@@ -60,6 +61,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
       logged_by: user.id,
       start_time: new Date().toISOString()
     })
+    notifyPartner(childId, 'pump_start')
     setBusy(false)
     reload()
   }

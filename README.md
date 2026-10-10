@@ -81,6 +81,41 @@ Then deploy the project (via the Vercel dashboard or CLI), setting
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as environment variables
 there too.
 
+## 6. Push notifications (optional)
+
+Gives you partner alerts ("Sam started a sleep"), "timer still running"
+reminders, and "it's been 3h since the last feeding" reminders. Works on
+Android/desktop browsers, and on iPhone (iOS 16.4+) once the app is added to
+the Home Screen. Each person turns it on per device in **Settings → Notifications**.
+
+1. Run the second migration: `supabase/migrations/0002_push.sql` (SQL editor).
+2. Generate VAPID keys: `npx web-push generate-vapid-keys`
+3. Put the **public** key in your app env as `VITE_VAPID_PUBLIC_KEY` (local `.env` and your host), then redeploy.
+4. Deploy the functions and set their secrets (Supabase CLI):
+
+   ```bash
+   supabase functions deploy notify-partner
+   supabase functions deploy send-reminders --no-verify-jwt
+   supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... \
+     VAPID_SUBJECT=mailto:you@example.com CRON_SECRET=pick-a-long-random-string
+   ```
+
+5. Schedule the reminder job (SQL editor; enable the `pg_cron` and `pg_net`
+   extensions first, and replace the project ref and secret):
+
+   ```sql
+   select cron.schedule('nestlog-reminders', '*/5 * * * *', $$
+     select net.http_post(
+       url := 'https://YOUR-PROJECT-REF.supabase.co/functions/v1/send-reminders',
+       headers := '{"x-cron-secret": "pick-a-long-random-string"}'::jsonb
+     );
+   $$);
+   ```
+
+Partner alerts need only steps 1-4. Timer and feeding reminders need step 5.
+Web notifications can't show a live ticking timer on the lock screen; they're
+one-shot messages.
+
 ## Project structure
 
 ```

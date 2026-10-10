@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { formatElapsed } from '../lib/format'
@@ -114,6 +115,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
       .select()
       .single()
     if (data) {
+      notifyPartner(childId, 'feed_breast')
       setActiveFeedingId(data.id)
       setSessionStart(new Date(data.start_time).getTime())
       return data.id
@@ -226,6 +228,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
       end_time: nowIso,
       notes: notes || null
     })
+    notifyPartner(childId, type === 'bottle' ? 'feed_bottle' : 'feed_solid', type === 'bottle' && amount ? `${amount}${unit}` : undefined)
     setBusy(false)
     setOpen(false)
     setAmount('')

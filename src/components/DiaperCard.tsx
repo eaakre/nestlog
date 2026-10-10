@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useRecentRows } from '../lib/useRecentRows'
 import { describeDiaper } from '../lib/describe'
@@ -34,6 +35,7 @@ export default function DiaperCard({ childId }: { childId: string }) {
       dirty: kind === 'dirty',
       time: new Date().toISOString()
     })
+    notifyPartner(childId, 'diaper', kind)
     setQuickBusy(null)
     reload()
   }

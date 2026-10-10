@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { useRecentRows } from '../lib/useRecentRows'
@@ -56,6 +57,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       logged_by: user.id,
       start_time: new Date().toISOString()
     })
+    notifyPartner(childId, 'sleep_start')
     setBusy(false)
     reload()
   }
@@ -77,6 +79,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       .from('sleep_sessions')
       .update({ start_time: fromDatetimeLocalValue(editStart), notes: notes || null })
       .eq('id', active.id)
+    notifyPartner(childId, 'sleep_end', formatDurationMinutes(liveMinutes) ?? undefined)
     setBusy(false)
     setShowModal(false)
     loadActive()

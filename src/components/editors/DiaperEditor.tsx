@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { notifyPartner } from '../../lib/notify'
 import { useAuth } from '../../contexts/AuthContext'
 import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
 import EditorShell from '../EditorShell'
@@ -78,6 +79,7 @@ export default function DiaperEditor({
       await supabase.from('diapers').update(fields).eq('id', entry.id)
     } else {
       await supabase.from('diapers').insert({ child_id: childId, logged_by: user.id, ...fields })
+      notifyPartner(childId, 'diaper', [fields.wet && 'wet', fields.dirty && 'dirty'].filter(Boolean).join(' + ') || 'dry')
     }
     setBusy(false)
     onChanged()

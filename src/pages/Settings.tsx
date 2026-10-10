@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useChildren } from '../contexts/ChildContext'
 import { useUnit } from '../lib/units'
+import NotificationSettings from '../components/NotificationSettings'
 import type { Profile } from '../types'
 
 export default function Settings() {
@@ -83,6 +84,8 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      <NotificationSettings />
 
       <Link to="/onboarding" className="btn-secondary w-full mb-4">
         Add another child
