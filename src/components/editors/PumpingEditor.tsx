@@ -4,6 +4,7 @@ import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
 import { useUnit, mlToUnit, unitToMl } from '../../lib/units'
 import EditorShell from '../EditorShell'
 import type { PumpingSession, Side } from '../../types'
+import DateTimeInput from '../DateTimeInput'
 
 export default function PumpingEditor({ entry, onClose, onChanged }: { entry: PumpingSession; onClose: () => void; onChanged: () => void }) {
   const { unit } = useUnit()
@@ -62,11 +63,11 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
       </div>
       <div>
         <label className="label">Start time</label>
-        <input className="input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+        <DateTimeInput value={start} onChange={setStart} />
       </div>
       <div>
         <label className="label">End time (blank = still pumping)</label>
-        <input className="input" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <DateTimeInput value={end} onChange={setEnd} />
       </div>
       <div>
         <label className="label">Notes</label>

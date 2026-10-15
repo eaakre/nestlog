@@ -6,6 +6,7 @@ import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
 import EditorShell from '../EditorShell'
 import Toggle from '../Toggle'
 import type { Diaper, DiaperTexture, DiaperColor } from '../../types'
+import DateTimeInput from '../DateTimeInput'
 
 const TEXTURES: { key: DiaperTexture; label: string; icon: string }[] = [
   { key: 'runny', label: 'Runny', icon: '💦' },
@@ -107,7 +108,7 @@ export default function DiaperEditor({
     >
       <div className="flex items-center justify-between text-sm gap-3">
         <span className="text-parchment-300">Time</span>
-        <input className="input w-auto text-right" type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} />
+        <DateTimeInput className="justify-end" value={time} onChange={setTime} />
       </div>
 
       <div className="flex justify-center gap-4">

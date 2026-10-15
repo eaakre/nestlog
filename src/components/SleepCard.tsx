@@ -12,6 +12,7 @@ import TrackerCard from './TrackerCard'
 import LastSummary from './LastSummary'
 import SleepEditor from './editors/SleepEditor'
 import type { SleepSession } from '../types'
+import DateTimeInput from './DateTimeInput'
 
 export default function SleepCard({ childId }: { childId: string }) {
   const { user } = useAuth()
@@ -135,7 +136,7 @@ export default function SleepCard({ childId }: { childId: string }) {
 
             <div>
               <label className="label">Start time</label>
-              <input className="input" type="datetime-local" value={editStart} onChange={(e) => setEditStart(e.target.value)} />
+              <DateTimeInput value={editStart} onChange={setEditStart} />
             </div>
             <div>
               <label className="label">Notes</label>

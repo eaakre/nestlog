@@ -4,6 +4,7 @@ import { toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } f
 import { useUnit, mlToUnit, unitToMl } from '../../lib/units'
 import EditorShell from '../EditorShell'
 import type { Feeding, Side } from '../../types'
+import DateTimeInput from '../DateTimeInput'
 
 const TITLES = { breast: 'Breastfeed', bottle: 'Bottle Feed', solid: 'Solid Food' }
 
@@ -98,7 +99,7 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
       )}
       <div>
         <label className="label">Start time</label>
-        <input className="input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+        <DateTimeInput value={start} onChange={setStart} />
       </div>
       <div>
         <label className="label">Notes</label>

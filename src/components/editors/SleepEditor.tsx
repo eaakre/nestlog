@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../../lib/format'
 import EditorShell from '../EditorShell'
 import type { SleepSession } from '../../types'
+import DateTimeInput from '../DateTimeInput'
 
 export default function SleepEditor({ entry, onClose, onChanged }: { entry: SleepSession; onClose: () => void; onChanged: () => void }) {
   const [start, setStart] = useState(toDatetimeLocalValue(entry.start_time))
@@ -40,11 +41,11 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
       </div>
       <div>
         <label className="label">Start time</label>
-        <input className="input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+        <DateTimeInput value={start} onChange={setStart} />
       </div>
       <div>
         <label className="label">End time (blank = still sleeping)</label>
-        <input className="input" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <DateTimeInput value={end} onChange={setEnd} />
       </div>
       <div>
         <label className="label">Notes</label>
