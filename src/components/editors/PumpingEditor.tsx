@@ -55,7 +55,7 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
       </div>
       <div>
         <label className="label">End time (blank = still pumping)</label>
-        <DateTimeInput value={end} onChange={setEnd} />
+        <DateTimeInput value={end} onChange={setEnd} clearable />
       </div>
       <div>
         <label className="label">Notes</label>

@@ -108,7 +108,7 @@ export default function DiaperEditor({
     >
       <div className="flex items-center justify-between text-sm gap-3">
         <span className="text-parchment-300">Time</span>
-        <DateTimeInput className="justify-end" value={time} onChange={setTime} />
+        <DateTimeInput value={time} onChange={setTime} />
       </div>
 
       <div className="flex justify-center gap-4">

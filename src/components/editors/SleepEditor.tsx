@@ -45,7 +45,7 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
       </div>
       <div>
         <label className="label">End time (blank = still sleeping)</label>
-        <DateTimeInput value={end} onChange={setEnd} />
+        <DateTimeInput value={end} onChange={setEnd} clearable />
       </div>
       <div>
         <label className="label">Notes</label>

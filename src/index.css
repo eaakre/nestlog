@@ -41,3 +41,5 @@
     @apply block text-sm text-parchment-300 mb-1;
   }
 }
+
+.no-scrollbar::-webkit-scrollbar{display:none}
