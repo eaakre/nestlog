@@ -25,15 +25,17 @@ export function ChildProvider({ children }: { children: ReactNode }) {
   const [activeChildId, setActiveChildIdState] = useState<string | null>(
     () => localStorage.getItem(ACTIVE_CHILD_KEY)
   )
-  const [loading, setLoading] = useState(true)
+  // Which user the current child list was loaded for. Until it matches the signed-in
+  // user we are still "loading" — otherwise the first render after sign-in sees an empty
+  // list and wrongly redirects to onboarding.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     if (!user) {
       setChildList([])
-      setLoading(false)
+      setLoadedFor(null)
       return
     }
-    setLoading(true)
     const { data, error } = await supabase
       .from('child_members')
       .select('children(*)')
@@ -47,9 +49,10 @@ export function ChildProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(ACTIVE_CHILD_KEY, list[0].id)
       }
     }
-    setLoading(false)
+    setLoadedFor(user.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+  const loading = !!user && loadedFor !== user.id
 
   useEffect(() => {
     refresh()
@@ -113,7 +116,7 @@ export function ChildProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  const activeChild = childList.find((c) => c.id === activeChildId) ?? null
+  const activeChild = childList.find((c) => c.id === activeChildId) ?? childList[0] ?? null
 
   // user id -> display name, for "saved by" labels
   const [members, setMembers] = useState<Record<string, string>>({})
