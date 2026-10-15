@@ -5,6 +5,7 @@ import FeedingCard from '../components/FeedingCard'
 import DiaperCard from '../components/DiaperCard'
 import PumpingCard from '../components/PumpingCard'
 import FirstsCard from '../components/FirstsCard'
+import GrowthCard from '../components/GrowthCard'
 
 export default function Dashboard() {
   const { activeChild, children_, setActiveChildId } = useChildren()
@@ -42,6 +43,7 @@ export default function Dashboard() {
         <PumpingCard childId={activeChild.id} />
         <FeedingCard childId={activeChild.id} />
         <DiaperCard childId={activeChild.id} />
+        <GrowthCard childId={activeChild.id} />
         <FirstsCard childId={activeChild.id} />
       </div>
     </div>

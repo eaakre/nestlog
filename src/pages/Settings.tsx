@@ -75,7 +75,10 @@ export default function Settings() {
       )}
 
       <div className="card mb-4 flex items-center justify-between">
-        <span className="text-parchment-100">Volume units</span>
+        <div>
+          <span className="text-parchment-100">Units</span>
+          <p className="text-parchment-300 text-xs">oz = lb/in for growth, ml = kg/cm</p>
+        </div>
         <div className="flex gap-2">
           {(['oz', 'ml'] as const).map((u) => (
             <button key={u} className={unit === u ? 'btn-primary !px-4 !py-2' : 'btn-secondary !px-4 !py-2'} onClick={() => setUnit(u)}>

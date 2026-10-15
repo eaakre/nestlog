@@ -110,3 +110,16 @@ export type Milestone = {
   photo_path: string | null
   created_at: string
 }
+
+export type GrowthKind = 'weight' | 'height' | 'head'
+
+export type GrowthMeasurement = {
+  id: string
+  child_id: string
+  logged_by: string
+  kind: GrowthKind
+  value: number // grams for weight, cm for height/head
+  measured_on: string // YYYY-MM-DD
+  notes: string | null
+  created_at: string
+}

@@ -1,13 +1,14 @@
 import { ReactNode } from 'react'
 
-type Color = 'sleep' | 'pump' | 'feed' | 'diaper' | 'firsts'
+type Color = 'sleep' | 'pump' | 'feed' | 'diaper' | 'firsts' | 'growth'
 
 const HEADER_BG: Record<Color, string> = {
   sleep: 'bg-header-sleep',
   pump: 'bg-header-pump',
   feed: 'bg-header-feed',
   diaper: 'bg-header-diaper',
-  firsts: 'bg-header-firsts'
+  firsts: 'bg-header-firsts',
+  growth: 'bg-header-growth'
 }
 
 export default function TrackerCard({

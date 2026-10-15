@@ -8,7 +8,7 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 ## Commands
 - `npm install`, `npm run dev`, `npm run build` (runs `tsc -b && vite build`)
 - Env: copy `.env.example` to `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_VAPID_PUBLIC_KEY`)
-- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket)
+- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth)
 
 ## Architecture notes
 - Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to the logger and to anyone sharing the linked child.
@@ -17,11 +17,12 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 - Volume is stored in ml; oz/ml conversion happens at the edges (`src/lib/units.tsx`).
 - `useRecentRows(table, childId, timeField)` powers each card's history with realtime reload. Entries are editable/deletable via `src/components/editors/*` and `EditorShell`.
 - Baby Firsts: `milestones` table + private `milestone-photos` storage bucket (files under `<child_id>/`, access via `is_child_member`). UI in `FirstsCard`, `pages/Firsts.tsx`, `editors/MilestoneEditor`; age math in `src/lib/age.ts`; photos resized client-side in `src/lib/photos.ts`.
+- Growth: `growth_measurements` (kind weight|height|head; weight stored in grams, lengths in cm). Display units follow the oz/ml setting (oz = lb/oz + inches, ml = kg + cm). See `src/lib/growth.ts`, `GrowthCard`, `pages/Growth.tsx`, `editors/GrowthEditor`.
 - Push: `src/lib/push.ts` (subscribe), `src/lib/notify.ts` (client calls `notify-partner`), Edge Functions in `supabase/functions/` (`notify-partner`, `send-reminders` on a pg_cron schedule). See README section 6.
 - Design: tokens in `tailwind.config.js` (night/parchment/dusk/sage/amber, `header.*` card colors). Fonts: Lora (headings), DM Sans (body). Use original code and colors, not Nara's assets.
 
 ## Not built yet
-History and Trends tabs, Growth (weight/height/head), child avatar/date header, day-grouped history, Nara data import (needs a real export file), offline queue, password reset, data export, leave/remove child, tests.
+History and Trends tabs, growth charts/percentiles, child avatar/date header, day-grouped history, Nara data import (needs a real export file), offline queue, password reset, data export, leave/remove child, tests.
 
 ## Conventions
 - Small focused commits. `main` is the branch.

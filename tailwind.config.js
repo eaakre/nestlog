@@ -35,7 +35,8 @@ export default {
           pump: '#F2A79E',
           feed: '#F0C24C',
           diaper: '#F2ECD8',
-          firsts: '#CDBFEA'
+          firsts: '#CDBFEA',
+          growth: '#B3DE8F'
         }
       },
       fontFamily: {
