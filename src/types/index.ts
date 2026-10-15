@@ -82,7 +82,9 @@ export type PumpingSession = {
   child_id: string | null
   logged_by: string
   side: Side | null
-  amount_ml: number | null
+  amount_ml: number | null // total of left + right
+  amount_left_ml: number | null
+  amount_right_ml: number | null
   start_time: string
   end_time: string | null
   notes: string | null

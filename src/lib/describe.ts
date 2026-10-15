@@ -46,5 +46,11 @@ export function describeDiaper(d: Diaper): EntryDescription {
 
 export function describePumping(p: PumpingSession, unit: Unit): EntryDescription {
   if (!p.end_time) return { text: 'Pumping started' }
+  if (p.amount_left_ml != null && p.amount_right_ml != null) {
+    return {
+      text: `Pumped · ${formatVolume(p.amount_ml ?? p.amount_left_ml + p.amount_right_ml, unit)}`,
+      sub: `L ${formatVolume(p.amount_left_ml, unit)} + R ${formatVolume(p.amount_right_ml, unit)}`
+    }
+  }
   return { text: `Pumped${p.amount_ml ? ` · ${formatVolume(p.amount_ml, unit)}` : ''}${p.side ? ` · ${p.side}` : ''}` }
 }

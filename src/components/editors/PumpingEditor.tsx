@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
-import { useUnit, mlToUnit, unitToMl } from '../../lib/units'
+import { useUnit } from '../../lib/units'
+import { buildPumpFields, pumpFieldText } from '../../lib/pumping'
+import PumpAmountFields from '../PumpAmountFields'
 import EditorShell from '../EditorShell'
-import type { PumpingSession, Side } from '../../types'
+import type { PumpingSession } from '../../types'
 import DateTimeInput from '../DateTimeInput'
 
 export default function PumpingEditor({ entry, onClose, onChanged }: { entry: PumpingSession; onClose: () => void; onChanged: () => void }) {
   const { unit } = useUnit()
   const [start, setStart] = useState(toDatetimeLocalValue(entry.start_time))
   const [end, setEnd] = useState(entry.end_time ? toDatetimeLocalValue(entry.end_time) : '')
-  const [side, setSide] = useState<Side>(entry.side ?? 'both')
-  const [amount, setAmount] = useState(entry.amount_ml != null ? String(mlToUnit(entry.amount_ml, unit)) : '')
+  const [left, setLeft] = useState(() => pumpFieldText(entry, unit).left)
+  const [right, setRight] = useState(() => pumpFieldText(entry, unit).right)
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [busy, setBusy] = useState(false)
 
@@ -27,8 +29,7 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
       .update({
         start_time: startIso,
         end_time: endIso,
-        side,
-        amount_ml: amount ? unitToMl(Number(amount), unit) : null,
+        ...buildPumpFields({ left, right, unit, existing: entry }),
         notes: notes || null
       })
       .eq('id', entry.id)
@@ -47,20 +48,7 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
 
   return (
     <EditorShell title="Pumping" onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={invalid} loggedBy={entry.logged_by}>
-      <div>
-        <label className="label">Side</label>
-        <div className="flex gap-2">
-          {(['left', 'right', 'both'] as Side[]).map((s) => (
-            <button key={s} onClick={() => setSide(s)} className={side === s ? 'btn-primary flex-1 capitalize' : 'btn-secondary flex-1 capitalize'}>
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label className="label">Amount ({unit})</label>
-        <input className="input" type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      </div>
+      <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
       <div>
         <label className="label">Start time</label>
         <DateTimeInput value={start} onChange={setStart} />

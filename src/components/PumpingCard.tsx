@@ -6,13 +6,15 @@ import { useNow } from '../lib/useNow'
 import { useRecentRows } from '../lib/useRecentRows'
 import { formatElapsed } from '../lib/format'
 import { describePumping } from '../lib/describe'
-import { useUnit, mlToUnit, unitToMl } from '../lib/units'
+import { useUnit, mlToUnit } from '../lib/units'
+import { buildPumpFields, pumpFieldText } from '../lib/pumping'
+import PumpAmountFields from './PumpAmountFields'
 import Modal from './Modal'
 import SectionHistory from './SectionHistory'
 import TrackerCard from './TrackerCard'
 import LastSummary from './LastSummary'
 import PumpingEditor from './editors/PumpingEditor'
-import type { PumpingSession, Side } from '../types'
+import type { PumpingSession } from '../types'
 
 export default function PumpingCard({ childId }: { childId: string }) {
   const { user } = useAuth()
@@ -20,8 +22,8 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const [active, setActive] = useState<PumpingSession | null>(null)
   const [busy, setBusy] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [side, setSide] = useState<Side>('both')
-  const [amount, setAmount] = useState('')
+  const [left, setLeft] = useState('')
+  const [right, setRight] = useState('')
   const [notes, setNotes] = useState('')
   const [editing, setEditing] = useState<PumpingSession | null>(null)
   const now = useNow()
@@ -68,8 +70,9 @@ export default function PumpingCard({ childId }: { childId: string }) {
 
   const openModal = () => {
     if (!active) return
-    setSide(active.side ?? 'both')
-    setAmount(active.amount_ml != null ? String(mlToUnit(active.amount_ml, unit)) : '')
+    const t = pumpFieldText(active, unit)
+    setLeft(t.left)
+    setRight(t.right)
     setNotes(active.notes ?? '')
     setShowModal(true)
   }
@@ -80,7 +83,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
     setBusy(true)
     await supabase
       .from('pumping_sessions')
-      .update({ side, amount_ml: amount ? unitToMl(Number(amount), unit) : null, notes: notes || null })
+      .update({ ...buildPumpFields({ left, right, unit, existing: active }), notes: notes || null })
       .eq('id', active.id)
     setBusy(false)
     setShowModal(false)
@@ -94,14 +97,14 @@ export default function PumpingCard({ childId }: { childId: string }) {
       .from('pumping_sessions')
       .update({
         end_time: new Date().toISOString(),
-        side,
-        amount_ml: amount ? unitToMl(Number(amount), unit) : null,
+        ...buildPumpFields({ left, right, unit, existing: active }),
         notes: notes || null
       })
       .eq('id', active.id)
     setBusy(false)
     setShowModal(false)
-    setAmount('')
+    setLeft('')
+    setRight('')
     loadActive()
     reload()
   }
@@ -136,20 +139,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
       {showModal && (
         <Modal title="Pumping" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
-            <div>
-              <label className="label">Side</label>
-              <div className="flex gap-2">
-                {(['left', 'right', 'both'] as Side[]).map((s) => (
-                  <button key={s} onClick={() => setSide(s)} className={side === s ? 'btn-primary flex-1 capitalize' : 'btn-secondary flex-1 capitalize'}>
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="label">Amount ({unit})</label>
-              <input className="input" type="number" inputMode="decimal" placeholder={unit === 'oz' ? 'e.g. 3' : 'e.g. 90'} value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </div>
+            <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
             <div>
               <label className="label">Notes</label>
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
