@@ -6,6 +6,7 @@ import { uploadMilestonePhoto, removeMilestonePhoto } from '../../lib/photos'
 import EditorShell from '../EditorShell'
 import DateInput from '../DateInput'
 import MilestonePhoto from '../MilestonePhoto'
+import Photo from '../Photo'
 import type { Milestone } from '../../types'
 
 const IDEAS = ['First smile', 'Laughed', 'Rolled over', 'Sat up', 'First tooth', 'Crawling', 'Pulled up to stand', 'First solid food', 'First words', 'First steps']
@@ -120,9 +121,9 @@ export default function MilestoneEditor({
       {hasPhoto && (
         <div className="relative">
           {preview ? (
-            <img src={preview} alt="" className="w-full max-h-64 rounded-xl object-cover" />
+            <Photo src={preview} fit="contain" zoom className="w-full max-h-72" />
           ) : (
-            <MilestonePhoto path={entry?.photo_path ?? null} className="w-full max-h-64 h-48" />
+            <MilestonePhoto path={entry?.photo_path ?? null} fit="contain" zoom className="w-full max-h-72" />
           )}
         </div>
       )}

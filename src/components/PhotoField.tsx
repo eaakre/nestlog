@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import MilestonePhoto from './MilestonePhoto'
+import Photo from './Photo'
 import { removeMilestonePhoto, uploadMilestonePhoto } from '../lib/photos'
 
 /**
@@ -31,7 +32,7 @@ export function usePhotoField(childId: string, existing: string | null | undefin
 
   const node = (
     <div className="flex flex-col gap-3">
-      {has && (preview ? <img src={preview} alt="" className="w-full max-h-64 h-48 rounded-xl object-cover" /> : <MilestonePhoto path={existing ?? null} className="w-full max-h-64 h-48" />)}
+      {has && (preview ? <Photo src={preview} fit="contain" zoom className="w-full max-h-72" /> : <MilestonePhoto path={existing ?? null} fit="contain" zoom className="w-full max-h-72" />)}
       <input
         ref={input}
         type="file"
