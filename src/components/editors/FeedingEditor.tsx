@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../../lib/format'
 import { useUnit, mlToUnit, unitToMl } from '../../lib/units'
+import { usePhotoField } from '../PhotoField'
 import EditorShell from '../EditorShell'
 import type { Feeding, Side } from '../../types'
 import DateTimeInput from '../DateTimeInput'
@@ -17,6 +18,8 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
   const [amount, setAmount] = useState(entry.amount_ml != null ? String(mlToUnit(entry.amount_ml, unit)) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const photo = usePhotoField(entry.child_id, entry.photo_path)
 
   const startIso = start ? fromDatetimeLocalValue(start) : null
   const leftMin = Math.max(0, Number(left) || 0)
@@ -25,8 +28,11 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
   const save = async () => {
     if (!startIso) return
     setBusy(true)
-    if (entry.type === 'breast') {
-      await supabase
+    setError(null)
+    try {
+      const photo_path = await photo.resolve()
+      const res = entry.type === 'breast'
+        ? await supabase
         .from('feedings')
         .update({
           start_time: startIso,
@@ -34,19 +40,26 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
           duration_right_minutes: rightMin,
           duration_minutes: leftMin + rightMin,
           side: lastSide,
-          notes: notes || null
+          notes: notes || null,
+          photo_path
         })
         .eq('id', entry.id)
-    } else {
-      await supabase
+        : await supabase
         .from('feedings')
         .update({
           start_time: startIso,
           end_time: startIso,
           amount_ml: entry.type === 'bottle' && amount ? unitToMl(Number(amount), unit) : null,
-          notes: notes || null
+          notes: notes || null,
+          photo_path
         })
         .eq('id', entry.id)
+      if (res.error) throw new Error(res.error.message)
+      await photo.cleanup(photo_path)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.')
+      setBusy(false)
+      return
     }
     setBusy(false)
     onChanged()
@@ -62,7 +75,7 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
   }
 
   return (
-    <EditorShell title={TITLES[entry.type]} onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={!startIso} loggedBy={entry.logged_by}>
+    <EditorShell title={TITLES[entry.type]} onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={!startIso} loggedBy={entry.logged_by} error={error}>
       {entry.type === 'breast' && (
         <>
           <div className="grid grid-cols-2 gap-3">
@@ -105,6 +118,7 @@ export default function FeedingEditor({ entry, onClose, onChanged }: { entry: Fe
         <label className="label">Notes</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
       </div>
+      {photo.node}
     </EditorShell>
   )
 }

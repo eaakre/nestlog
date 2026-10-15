@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { notifyPartner } from '../../lib/notify'
 import { useAuth } from '../../contexts/AuthContext'
 import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
+import { usePhotoField } from '../PhotoField'
 import EditorShell from '../EditorShell'
 import Toggle from '../Toggle'
 import type { Diaper, DiaperTexture, DiaperColor } from '../../types'
@@ -60,13 +61,25 @@ export default function DiaperEditor({
   const [diaperRash, setDiaperRash] = useState(entry?.diaper_rash ?? false)
   const [notes, setNotes] = useState(entry?.notes ?? '')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const photo = usePhotoField(childId, entry?.photo_path)
 
   const isDry = !wet && !dirty
 
   const save = async () => {
     if (!user || !time) return
     setBusy(true)
+    setError(null)
+    let photo_path: string | null
+    try {
+      photo_path = await photo.resolve()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.')
+      setBusy(false)
+      return
+    }
     const fields = {
+      photo_path,
       wet,
       dirty,
       texture: dirty ? texture : null,
@@ -76,10 +89,16 @@ export default function DiaperEditor({
       time: fromDatetimeLocalValue(time),
       notes: notes || null
     }
-    if (entry) {
-      await supabase.from('diapers').update(fields).eq('id', entry.id)
-    } else {
-      await supabase.from('diapers').insert({ child_id: childId, logged_by: user.id, ...fields })
+    const res = entry
+      ? await supabase.from('diapers').update(fields).eq('id', entry.id)
+      : await supabase.from('diapers').insert({ child_id: childId, logged_by: user.id, ...fields })
+    if (res.error) {
+      setError(res.error.message)
+      setBusy(false)
+      return
+    }
+    await photo.cleanup(photo_path).catch(() => {})
+    if (!entry) {
       notifyPartner(childId, 'diaper', [fields.wet && 'wet', fields.dirty && 'dirty'].filter(Boolean).join(' + ') || 'dry')
     }
     setBusy(false)
@@ -105,6 +124,7 @@ export default function DiaperEditor({
       busy={busy}
       saveDisabled={!time}
       loggedBy={entry?.logged_by}
+      error={error}
     >
       <div className="flex items-center justify-between text-sm gap-3">
         <span className="text-parchment-300">Time</span>
@@ -162,6 +182,7 @@ export default function DiaperEditor({
         <label className="label">Notes</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
       </div>
+      {photo.node}
     </EditorShell>
   )
 }

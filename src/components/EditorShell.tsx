@@ -11,6 +11,7 @@ export default function EditorShell({
   busy,
   saveDisabled,
   loggedBy,
+  error,
   children
 }: {
   title: string
@@ -20,6 +21,7 @@ export default function EditorShell({
   busy: boolean
   saveDisabled?: boolean
   loggedBy?: string
+  error?: string | null
   children: ReactNode
 }) {
   const { members } = useChildren()
@@ -30,6 +32,8 @@ export default function EditorShell({
     <Modal title={title} onClose={onClose}>
       <div className="flex flex-col gap-4">
         {children}
+
+        {error && <p className="text-sm text-dusk-400 break-words" role="alert">{error}</p>}
 
         <button className="btn-primary" onClick={onSave} disabled={busy || saveDisabled}>
           Save

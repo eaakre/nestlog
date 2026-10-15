@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../../lib/format'
+import { usePhotoField } from '../PhotoField'
 import EditorShell from '../EditorShell'
 import type { SleepSession } from '../../types'
 import DateTimeInput from '../DateTimeInput'
@@ -10,6 +11,8 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
   const [end, setEnd] = useState(entry.end_time ? toDatetimeLocalValue(entry.end_time) : '')
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const photo = usePhotoField(entry.child_id, entry.photo_path)
 
   const startIso = start ? fromDatetimeLocalValue(start) : null
   const endIso = end ? fromDatetimeLocalValue(end) : null
@@ -19,7 +22,17 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
   const save = async () => {
     if (!startIso) return
     setBusy(true)
-    await supabase.from('sleep_sessions').update({ start_time: startIso, end_time: endIso, notes: notes || null }).eq('id', entry.id)
+    setError(null)
+    try {
+      const photo_path = await photo.resolve()
+      const { error: err } = await supabase.from('sleep_sessions').update({ start_time: startIso, end_time: endIso, notes: notes || null, photo_path }).eq('id', entry.id)
+      if (err) throw new Error(err.message)
+      await photo.cleanup(photo_path)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.')
+      setBusy(false)
+      return
+    }
     setBusy(false)
     onChanged()
     onClose()
@@ -34,7 +47,7 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
   }
 
   return (
-    <EditorShell title="Sleep" onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={invalid} loggedBy={entry.logged_by}>
+    <EditorShell title="Sleep" onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={invalid} loggedBy={entry.logged_by} error={error}>
       <div className="text-center py-1">
         <p className="text-parchment-300 text-sm mb-1">Total time</p>
         <p className="text-4xl font-display tabular-nums">{minutes !== null && minutes >= 0 ? formatDurationMinutes(minutes) : endIso ? '—' : 'Still sleeping'}</p>
@@ -51,6 +64,7 @@ export default function SleepEditor({ entry, onClose, onChanged }: { entry: Slee
         <label className="label">Notes</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
       </div>
+      {photo.node}
     </EditorShell>
   )
 }

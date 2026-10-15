@@ -37,6 +37,7 @@ export type SleepSession = {
   start_time: string
   end_time: string | null
   notes: string | null
+  photo_path?: string | null
   created_at: string
 }
 
@@ -56,6 +57,7 @@ export type Feeding = {
   start_time: string
   end_time: string | null // null while a breastfeed session is still in progress; bottle/solid are set immediately
   notes: string | null
+  photo_path?: string | null
   created_at: string
 }
 
@@ -74,6 +76,7 @@ export type Diaper = {
   diaper_rash: boolean
   time: string
   notes: string | null
+  photo_path?: string | null
   created_at: string
 }
 
@@ -88,6 +91,7 @@ export type PumpingSession = {
   start_time: string
   end_time: string | null
   notes: string | null
+  photo_path?: string | null
   created_at: string
 }
 

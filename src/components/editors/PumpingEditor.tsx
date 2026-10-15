@@ -4,6 +4,8 @@ import { toDatetimeLocalValue, fromDatetimeLocalValue } from '../../lib/format'
 import { useUnit } from '../../lib/units'
 import { buildPumpFields, pumpFieldText } from '../../lib/pumping'
 import PumpAmountFields from '../PumpAmountFields'
+import { useChildren } from '../../contexts/ChildContext'
+import { usePhotoField } from '../PhotoField'
 import EditorShell from '../EditorShell'
 import type { PumpingSession } from '../../types'
 import DateTimeInput from '../DateTimeInput'
@@ -16,6 +18,9 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
   const [right, setRight] = useState(() => pumpFieldText(entry, unit).right)
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { activeChild } = useChildren()
+  const photo = usePhotoField(entry.child_id ?? activeChild?.id ?? '', entry.photo_path)
 
   const startIso = start ? fromDatetimeLocalValue(start) : null
   const endIso = end ? fromDatetimeLocalValue(end) : null
@@ -24,15 +29,26 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
   const save = async () => {
     if (!startIso) return
     setBusy(true)
-    await supabase
-      .from('pumping_sessions')
-      .update({
-        start_time: startIso,
-        end_time: endIso,
-        ...buildPumpFields({ left, right, unit, existing: entry }),
-        notes: notes || null
-      })
-      .eq('id', entry.id)
+    setError(null)
+    try {
+      const photo_path = await photo.resolve()
+      const { error: err } = await supabase
+        .from('pumping_sessions')
+        .update({
+          start_time: startIso,
+          end_time: endIso,
+          ...buildPumpFields({ left, right, unit, existing: entry }),
+          notes: notes || null,
+          photo_path
+        })
+        .eq('id', entry.id)
+      if (err) throw new Error(err.message)
+      await photo.cleanup(photo_path)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.')
+      setBusy(false)
+      return
+    }
     setBusy(false)
     onChanged()
     onClose()
@@ -47,7 +63,7 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
   }
 
   return (
-    <EditorShell title="Pumping" onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={invalid} loggedBy={entry.logged_by}>
+    <EditorShell title="Pumping" onClose={onClose} onSave={save} onDelete={remove} busy={busy} saveDisabled={invalid} loggedBy={entry.logged_by} error={error}>
       <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
       <div>
         <label className="label">Start time</label>
@@ -61,6 +77,7 @@ export default function PumpingEditor({ entry, onClose, onChanged }: { entry: Pu
         <label className="label">Notes</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
       </div>
+      {photo.node}
     </EditorShell>
   )
 }
