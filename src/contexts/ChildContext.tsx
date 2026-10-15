@@ -62,17 +62,17 @@ export function ChildProvider({ children }: { children: ReactNode }) {
 
   const createChild = async (name: string, birthDate: string | null) => {
     if (!user) return { error: 'Not signed in', child: null }
-    const { data, error } = await supabase
-      .from('children')
-      .insert({ name, birth_date: birthDate, created_by: user.id })
-      .select()
-      .single()
+    // Generate the id here and don't ask for the row back: the creator isn't a
+    // member yet, so a RETURNING/select on the new row would fail row-level security.
+    const id = crypto.randomUUID()
+    const { error } = await supabase.from('children').insert({ id, name, birth_date: birthDate, created_by: user.id })
     if (error) return { error: error.message, child: null }
 
-    await supabase.from('child_members').insert({ child_id: data.id, user_id: user.id, role: 'parent' })
+    const { error: memberError } = await supabase.from('child_members').insert({ child_id: id, user_id: user.id, role: 'parent' })
+    if (memberError) return { error: memberError.message, child: null }
     await refresh()
-    setActiveChildId(data.id)
-    return { error: null, child: data as Child }
+    setActiveChildId(id)
+    return { error: null, child: { id, name, birth_date: birthDate, created_by: user.id } as Child }
   }
 
   const createInvite = async (childId: string) => {
