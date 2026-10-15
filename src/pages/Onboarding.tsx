@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useChildren } from '../contexts/ChildContext'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Onboarding() {
   const { createChild, redeemInvite } = useChildren()
   const { signOut } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<'choose' | 'create' | 'join'>('choose')
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -18,6 +20,7 @@ export default function Onboarding() {
     const { error } = await createChild(name, birthDate || null)
     setBusy(false)
     if (error) setError(error)
+    else navigate('/', { replace: true })
   }
 
   const submitJoin = async () => {
@@ -26,6 +29,7 @@ export default function Onboarding() {
     const { error } = await redeemInvite(code)
     setBusy(false)
     if (error) setError(error)
+    else navigate('/', { replace: true })
   }
 
   return (
