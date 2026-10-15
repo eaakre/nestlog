@@ -18,7 +18,7 @@ export default function Toggle({
         className={`relative w-12 h-7 rounded-full transition-colors ${checked ? 'bg-dusk-500' : 'bg-night-700'}`}
       >
         <span
-          className={`absolute top-0.5 w-6 h-6 rounded-full bg-parchment-100 transition-transform ${
+          className={`absolute left-0 top-0.5 w-6 h-6 rounded-full bg-parchment-100 transition-transform ${
             checked ? 'translate-x-5' : 'translate-x-0.5'
           }`}
         />
