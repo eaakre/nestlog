@@ -13,6 +13,17 @@ export default function DateTimeInput({
   const [date = '', time = ''] = value ? value.split('T') : []
   const emit = (d: string, t: string) => onChange(d ? `${d}T${t || '00:00'}` : '')
 
+  // On touch devices a tap should open the picker (like tapping the icon does),
+  // since there's no good way to type into a native date/time field there.
+  const openPicker = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    if (!window.matchMedia('(pointer: coarse)').matches) return
+    try {
+      e.currentTarget.showPicker?.()
+    } catch {
+      /* picker already open or not allowed; ignore */
+    }
+  }
+
   const field = 'input !text-base min-w-0 [color-scheme:dark]'
   return (
     <div className={`flex gap-2 ${className}`}>
@@ -21,6 +32,7 @@ export default function DateTimeInput({
         type="date"
         value={date}
         onChange={(e) => emit(e.target.value, time)}
+        onClick={openPicker}
         aria-label="Date"
       />
       <input
@@ -28,6 +40,7 @@ export default function DateTimeInput({
         type="time"
         value={time}
         onChange={(e) => emit(date, e.target.value)}
+        onClick={openPicker}
         aria-label="Time"
       />
     </div>
