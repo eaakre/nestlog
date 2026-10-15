@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useChildren } from '../contexts/ChildContext'
 import { useUnit } from '../lib/units'
+import BottomNav from '../components/BottomNav'
 import NotificationSettings from '../components/NotificationSettings'
 import type { Profile } from '../types'
 
@@ -97,6 +98,7 @@ export default function Settings() {
       <button className="btn-ghost w-full" onClick={signOut}>
         Sign out
       </button>
+      <BottomNav />
     </div>
   )
 }

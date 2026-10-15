@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
 import Firsts from './pages/Firsts'
 import Growth from './pages/Growth'
+import History from './pages/History'
+import Trends from './pages/Trends'
 
 function Splash() {
   return (
@@ -85,6 +87,26 @@ function AppRoutes() {
           <RequireAuth>
             <RequireChild>
               <Settings />
+            </RequireChild>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <RequireAuth>
+            <RequireChild>
+              <History />
+            </RequireChild>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/trends"
+        element={
+          <RequireAuth>
+            <RequireChild>
+              <Trends />
             </RequireChild>
           </RequireAuth>
         }

@@ -21,8 +21,10 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 - Push: `src/lib/push.ts` (subscribe), `src/lib/notify.ts` (client calls `notify-partner`), Edge Functions in `supabase/functions/` (`notify-partner`, `send-reminders` on a pg_cron schedule). See README section 6.
 - Design: tokens in `tailwind.config.js` (night/parchment/dusk/sage/amber, `header.*` card colors). Fonts: Lora (headings), DM Sans (body). Use original code and colors, not Nara's assets.
 
+- History (`src/pages/History.tsx`): 7-day time-of-day grid built from `src/lib/timeline.ts` (`blocksForDay`); filters persist in localStorage; tapping a block opens its editor (pumping only for its logger). Trends (`src/pages/Trends.tsx`): metrics defined in `src/lib/metrics.ts` as per-day `{v,w}` series; headline = weighted mean over days with entries; delta compares to the previous equal-length window; daytime = 7AM–7PM (`DAY_START_HOUR/DAY_END_HOUR`). Charts: `components/charts/BarChart.tsx`. `BottomNav` is on Activity/History/Trends/Account.
+
 ## Not built yet
-History and Trends tabs, growth charts/percentiles, child avatar/date header, day-grouped history, Nara data import (needs a real export file), offline queue, password reset, data export, leave/remove child, tests.
+Photos on entries, child avatar/date header, Nara data import (needs a real export file), offline queue, password reset, data export, leave/remove child, tests.
 
 ## Conventions
 - Small focused commits. `main` is the branch.

@@ -1,3 +1,4 @@
+import BottomNav from '../components/BottomNav'
 import { Link } from 'react-router-dom'
 import { useChildren } from '../contexts/ChildContext'
 import SleepCard from '../components/SleepCard'
@@ -46,6 +47,7 @@ export default function Dashboard() {
         <GrowthCard childId={activeChild.id} />
         <FirstsCard childId={activeChild.id} />
       </div>
+      <BottomNav />
     </div>
   )
 }
