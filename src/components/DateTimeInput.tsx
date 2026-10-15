@@ -87,9 +87,9 @@ export default function DateTimeInput({
       </div>
 
       {open && (
-        <div className="relative mt-2 rounded-xl bg-night-950 border border-night-700 overflow-hidden">
-          <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-10 rounded-lg bg-night-700/60 pointer-events-none" />
+        <div className="mt-2 rounded-xl bg-night-950 border border-night-700 overflow-hidden">
           <div className="relative flex">
+            <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-10 rounded-lg bg-night-700/60 pointer-events-none" />
             <Wheel className="flex-[3]" label="Date" items={days.map((d) => dayLabel(d, today))} index={dayIndex} onIndex={(i) => emit(days[i], hourIndex, shown.getMinutes(), pmIndex)} />
             <Wheel className="flex-1" label="Hour" items={HOURS} index={hourIndex} onIndex={(i) => emit(days[dayIndex], i, shown.getMinutes(), pmIndex)} />
             <Wheel className="flex-1" label="Minute" items={MINUTES} index={shown.getMinutes()} onIndex={(i) => emit(days[dayIndex], hourIndex, i, pmIndex)} />
