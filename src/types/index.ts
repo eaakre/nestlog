@@ -99,3 +99,14 @@ export type TimelineEntry = {
   time: string
   data: SleepSession | Feeding | Diaper | PumpingSession
 }
+
+export type Milestone = {
+  id: string
+  child_id: string
+  logged_by: string
+  title: string
+  notes: string | null
+  happened_on: string // YYYY-MM-DD
+  photo_path: string | null
+  created_at: string
+}

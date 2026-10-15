@@ -7,6 +7,7 @@ import Signup from './pages/Signup'
 import Onboarding from './pages/Onboarding'
 import Dashboard from './pages/Dashboard'
 import Settings from './pages/Settings'
+import Firsts from './pages/Firsts'
 
 function Splash() {
   return (
@@ -53,6 +54,16 @@ function AppRoutes() {
           <RequireAuth>
             <RequireChild>
               <Dashboard />
+            </RequireChild>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/firsts"
+        element={
+          <RequireAuth>
+            <RequireChild>
+              <Firsts />
             </RequireChild>
           </RequireAuth>
         }

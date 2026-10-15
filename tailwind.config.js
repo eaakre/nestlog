@@ -34,7 +34,8 @@ export default {
           sleep: '#AEE0EF',
           pump: '#F2A79E',
           feed: '#F0C24C',
-          diaper: '#F2ECD8'
+          diaper: '#F2ECD8',
+          firsts: '#CDBFEA'
         }
       },
       fontFamily: {
