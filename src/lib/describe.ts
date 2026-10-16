@@ -36,8 +36,11 @@ export function describeDiaper(d: Diaper): EntryDescription {
   const text = `Diaper · ${status.length ? status.join(' + ') : 'dry'}`
 
   const extras: string[] = []
-  if (d.dirty && d.texture) extras.push(d.texture)
-  if (d.dirty && d.color) extras.push(d.color)
+  if (d.dirty) {
+    const tx = d.textures?.length ? d.textures : d.texture ? [d.texture] : []
+    const co = d.colors?.length ? d.colors : d.color ? [d.color] : []
+    extras.push(...tx, ...co)
+  }
   if (d.blowout) extras.push('blowout')
   if (d.diaper_rash) extras.push('rash')
 

@@ -55,8 +55,9 @@ export default function DiaperEditor({
   const [time, setTime] = useState(toDatetimeLocalValue(entry?.time ?? new Date().toISOString()))
   const [wet, setWet] = useState(entry?.wet ?? false)
   const [dirty, setDirty] = useState(entry?.dirty ?? false)
-  const [texture, setTexture] = useState<DiaperTexture | null>(entry?.texture ?? null)
-  const [color, setColor] = useState<DiaperColor | null>(entry?.color ?? null)
+  const [textures, setTextures] = useState<DiaperTexture[]>(entry?.textures?.length ? entry.textures : entry?.texture ? [entry.texture] : [])
+  const [colors, setColors] = useState<DiaperColor[]>(entry?.colors?.length ? entry.colors : entry?.color ? [entry.color] : [])
+  const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
   const [blowout, setBlowout] = useState(entry?.blowout ?? false)
   const [diaperRash, setDiaperRash] = useState(entry?.diaper_rash ?? false)
   const [notes, setNotes] = useState(entry?.notes ?? '')
@@ -82,8 +83,10 @@ export default function DiaperEditor({
       photo_path,
       wet,
       dirty,
-      texture: dirty ? texture : null,
-      color: dirty ? color : null,
+      texture: dirty ? textures[0] ?? null : null,
+      color: dirty ? colors[0] ?? null : null,
+      textures: dirty ? textures : [],
+      colors: dirty ? colors : [],
       blowout,
       diaper_rash: diaperRash,
       time: fromDatetimeLocalValue(time),
@@ -146,21 +149,21 @@ export default function DiaperEditor({
 
       {dirty && (
         <div className="flex flex-col gap-3 border-t border-night-700 pt-4">
-          <p className="text-parchment-100 font-display text-lg">Texture &amp; Color</p>
+          <p className="text-parchment-100 font-display text-lg">Texture &amp; Color <span className="text-sm text-parchment-300 font-sans">(choose any)</span></p>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {TEXTURES.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setTexture(texture === t.key ? null : t.key)}
-                aria-pressed={texture === t.key}
+                onClick={() => setTextures((l) => toggle(l, t.key))}
+                aria-pressed={textures.includes(t.key)}
                 className={`flex flex-col items-center gap-1 shrink-0 w-[4.5rem] rounded-xl border-2 py-2 transition-colors ${
-                  texture === t.key
+                  textures.includes(t.key)
                     ? 'border-dusk-400 bg-dusk-500/25 text-parchment-100'
                     : 'border-transparent text-parchment-300 opacity-70'
                 }`}
               >
                 <span className="text-3xl">{t.icon}</span>
-                <span className={`text-xs ${texture === t.key ? 'font-semibold' : ''}`}>{t.label}</span>
+                <span className={`text-xs ${textures.includes(t.key) ? 'font-semibold' : ''}`}>{t.label}</span>
               </button>
             ))}
           </div>
@@ -168,17 +171,17 @@ export default function DiaperEditor({
             {COLORS.map((c) => (
               <button
                 key={c.key}
-                onClick={() => setColor(color === c.key ? null : c.key)}
-                aria-pressed={color === c.key}
+                onClick={() => setColors((l) => toggle(l, c.key))}
+                aria-pressed={colors.includes(c.key)}
                 className={`flex flex-col items-center gap-1 shrink-0 w-[4.5rem] rounded-xl border-2 py-2 transition-colors ${
-                  color === c.key ? 'border-dusk-400 bg-dusk-500/25 text-parchment-100' : 'border-transparent text-parchment-300 opacity-70'
+                  colors.includes(c.key) ? 'border-dusk-400 bg-dusk-500/25 text-parchment-100' : 'border-transparent text-parchment-300 opacity-70'
                 }`}
               >
                 <span
                   className="w-9 h-9 rounded-full"
                   style={{ backgroundColor: c.swatch }}
                 />
-                <span className={`text-xs ${color === c.key ? 'font-semibold' : ''}`}>{c.label}</span>
+                <span className={`text-xs ${colors.includes(c.key) ? 'font-semibold' : ''}`}>{c.label}</span>
               </button>
             ))}
           </div>

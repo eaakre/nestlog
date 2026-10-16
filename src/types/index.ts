@@ -72,6 +72,8 @@ export type Diaper = {
   dirty: boolean // "dry" is simply wet === false && dirty === false
   texture: DiaperTexture | null
   color: DiaperColor | null
+  textures?: DiaperTexture[]
+  colors?: DiaperColor[]
   blowout: boolean
   diaper_rash: boolean
   time: string
