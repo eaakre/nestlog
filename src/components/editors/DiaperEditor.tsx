@@ -152,21 +152,33 @@ export default function DiaperEditor({
               <button
                 key={t.key}
                 onClick={() => setTexture(texture === t.key ? null : t.key)}
-                className={`flex flex-col items-center gap-1 shrink-0 w-16 ${texture === t.key ? 'text-dusk-400' : 'text-parchment-300'}`}
+                aria-pressed={texture === t.key}
+                className={`flex flex-col items-center gap-1 shrink-0 w-[4.5rem] rounded-xl border-2 py-2 transition-colors ${
+                  texture === t.key
+                    ? 'border-dusk-400 bg-dusk-500/25 text-parchment-100'
+                    : 'border-transparent text-parchment-300 opacity-70'
+                }`}
               >
                 <span className="text-3xl">{t.icon}</span>
-                <span className="text-xs">{t.label}</span>
+                <span className={`text-xs ${texture === t.key ? 'font-semibold' : ''}`}>{t.label}</span>
               </button>
             ))}
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {COLORS.map((c) => (
-              <button key={c.key} onClick={() => setColor(color === c.key ? null : c.key)} className="flex flex-col items-center gap-1 shrink-0 w-16">
+              <button
+                key={c.key}
+                onClick={() => setColor(color === c.key ? null : c.key)}
+                aria-pressed={color === c.key}
+                className={`flex flex-col items-center gap-1 shrink-0 w-[4.5rem] rounded-xl border-2 py-2 transition-colors ${
+                  color === c.key ? 'border-dusk-400 bg-dusk-500/25 text-parchment-100' : 'border-transparent text-parchment-300 opacity-70'
+                }`}
+              >
                 <span
-                  className={`w-9 h-9 rounded-full ${color === c.key ? 'ring-2 ring-dusk-400 ring-offset-2 ring-offset-night-800' : ''}`}
+                  className="w-9 h-9 rounded-full"
                   style={{ backgroundColor: c.swatch }}
                 />
-                <span className="text-xs text-parchment-300">{c.label}</span>
+                <span className={`text-xs ${color === c.key ? 'font-semibold' : ''}`}>{c.label}</span>
               </button>
             ))}
           </div>

@@ -75,7 +75,7 @@ export default function DateTimeInput({
   return (
     <div className={className}>
       <div className="flex items-center gap-2">
-        <button type="button" onClick={toggle} aria-expanded={open} className="input !text-base flex-1 text-left flex items-center justify-between">
+        <button type="button" onClick={toggle} aria-expanded={open} className="input !text-base flex-1 text-left flex items-center justify-between gap-3">
           <span className={current ? '' : 'text-parchment-300'}>{summary}</span>
           <span className="text-parchment-300 text-sm">{open ? 'Done' : 'Edit'}</span>
         </button>
