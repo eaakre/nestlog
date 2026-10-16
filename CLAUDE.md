@@ -8,10 +8,10 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 ## Commands
 - `npm install`, `npm run dev`, `npm run build` (runs `tsc -b && vite build`)
 - Env: copy `.env.example` to `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_VAPID_PUBLIC_KEY`)
-- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys)
+- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys, 0010 co-parent pumping edit)
 
 ## Architecture notes
-- Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to the logger and to anyone sharing the linked child.
+- Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to, and editable by, the logger and anyone sharing the linked child.
 - `ChildContext` owns children, active child, members, create/invite/redeem. `loading` stays true until the list has loaded for the signed-in user (prevents a false redirect to /onboarding).
 - Open timers are rows with `end_time` null (sleep, breastfeed, pumping), so "Save, keep going" works and syncs across devices.
 - Volume is stored in ml; oz/ml conversion happens at the edges (`src/lib/units.tsx`).
@@ -22,7 +22,7 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 - Push: `src/lib/push.ts` (subscribe), `src/lib/notify.ts` (client calls `notify-partner`), Edge Functions in `supabase/functions/` (`notify-partner`, `send-reminders` on a pg_cron schedule). See README section 6.
 - Design: tokens in `tailwind.config.js` (night/parchment/dusk/sage/amber, `header.*` card colors). Fonts: Lora (headings), DM Sans (body). Use original code and colors, not Nara's assets.
 
-- History (`src/pages/History.tsx`): 7-day time-of-day grid built from `src/lib/timeline.ts` (`blocksForDay`); filters persist in localStorage; tapping a block opens its editor (pumping only for its logger). Trends (`src/pages/Trends.tsx`): metrics defined in `src/lib/metrics.ts` as per-day `{v,w}` series; headline = weighted mean over days with entries; delta compares to the previous equal-length window; daytime = 7AM–7PM (`DAY_START_HOUR/DAY_END_HOUR`). Charts: `components/charts/BarChart.tsx`. `BottomNav` is on Activity/History/Trends/Account.
+- History (`src/pages/History.tsx`): 7-day time-of-day grid built from `src/lib/timeline.ts` (`blocksForDay`); filters persist in localStorage; tapping a block opens its editor. Trends (`src/pages/Trends.tsx`): metrics defined in `src/lib/metrics.ts` as per-day `{v,w}` series; headline = weighted mean over days with entries; delta compares to the previous equal-length window; daytime = 7AM–7PM (`DAY_START_HOUR/DAY_END_HOUR`). Charts: `components/charts/BarChart.tsx`. `BottomNav` is on Activity/History/Trends/Account.
 
 - Nara import: `scripts/nara_to_sql.py <csv> <out_dir> <erik_id> <angel_id>` writes SQL for the Supabase SQL editor (bypasses RLS so each caregiver's rows are attributed to them). Rows carry `import_key`, so re-running is safe, and rows within 2 minutes of a hand-logged Nestlog row are skipped. Never commit the CSV or generated SQL (personal data).
 

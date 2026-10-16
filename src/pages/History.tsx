@@ -132,7 +132,7 @@ export default function History() {
 
   const describe = (b: Block) =>
     b.kind === 'sleep' ? describeSleep(b.row) : b.kind === 'feeding' ? describeFeeding(b.row, unit) : b.kind === 'diaper' ? describeDiaper(b.row) : describePumping(b.row, unit)
-  const editable = (b: Block) => b.kind !== 'pumping' || b.row.logged_by === user?.id
+  const editable = (_b: Block) => true
   const px = PX_PER_HOUR / 60
 
   return (

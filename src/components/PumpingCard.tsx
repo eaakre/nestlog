@@ -247,14 +247,12 @@ export default function PumpingCard({ childId }: { childId: string }) {
         </Modal>
       )}
 
-      {/* Pumping is per-person: you can edit your own sessions, not your partner's. */}
       <SectionHistory<PumpingSession>
         rows={rows}
         timeField="start_time"
         describe={describePumping}
         icon="🍼"
         onSelect={setEditing}
-        canSelect={(r) => r.logged_by === user?.id}
       />
 
       {editing && (
