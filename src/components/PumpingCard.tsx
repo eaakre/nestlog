@@ -4,7 +4,8 @@ import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { useRecentRows } from '../lib/useRecentRows'
-import { formatElapsed } from '../lib/format'
+import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue } from '../lib/format'
+import DateTimeInput from './DateTimeInput'
 import { describePumping } from '../lib/describe'
 import { useUnit, mlToUnit } from '../lib/units'
 import { buildPumpFields, pumpFieldText } from '../lib/pumping'
@@ -25,6 +26,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const [left, setLeft] = useState('')
   const [right, setRight] = useState('')
   const [notes, setNotes] = useState('')
+  const [editStart, setEditStart] = useState('')
   const [editing, setEditing] = useState<PumpingSession | null>(null)
   const now = useNow()
   const { rows, reload } = useRecentRows<PumpingSession>('pumping_sessions', childId, 'start_time')
@@ -55,25 +57,35 @@ export default function PumpingCard({ childId }: { childId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
-  const start = async () => {
+  // Quick start: begins timing right now. The + button opens the modal instead.
+  const start = async (startIso = new Date().toISOString(), startNotes: string | null = null) => {
     if (!user) return
     setBusy(true)
     await supabase.from('pumping_sessions').insert({
       child_id: childId,
       logged_by: user.id,
-      start_time: new Date().toISOString()
+      start_time: startIso,
+      notes: startNotes
     })
     notifyPartner(childId, 'pump_start')
     setBusy(false)
+    setShowModal(false)
+    loadActive()
     reload()
   }
 
   const openModal = () => {
-    if (!active) return
-    const t = pumpFieldText(active, unit)
-    setLeft(t.left)
-    setRight(t.right)
-    setNotes(active.notes ?? '')
+    if (active) {
+      const t = pumpFieldText(active, unit)
+      setLeft(t.left)
+      setRight(t.right)
+      setNotes(active.notes ?? '')
+    } else {
+      setLeft('')
+      setRight('')
+      setNotes('')
+      setEditStart(toDatetimeLocalValue(new Date().toISOString()))
+    }
     setShowModal(true)
   }
 
@@ -112,7 +124,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const lastDone = rows.find((r) => r.end_time)
 
   return (
-    <TrackerCard title="Pumping" color="pump" onAdd={active ? openModal : start}>
+    <TrackerCard title="Pumping" color="pump" onAdd={openModal}>
       {!active && lastDone && (
         <LastSummary
           icon="🍼"
@@ -131,7 +143,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
           </button>
         </>
       ) : (
-        <button className="btn-secondary" onClick={start} disabled={busy}>
+        <button className="btn-secondary" onClick={() => start()} disabled={busy}>
           Start pumping
         </button>
       )}
@@ -139,20 +151,39 @@ export default function PumpingCard({ childId }: { childId: string }) {
       {showModal && (
         <Modal title="Pumping" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
-            <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
+            {active ? (
+              <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
+            ) : (
+              <>
+                <div className="text-center py-2">
+                  <p className="text-parchment-300 text-sm mb-1">Not started</p>
+                  <p className="text-4xl font-display tabular-nums">0m</p>
+                </div>
+                <div>
+                  <label className="label">Start time</label>
+                  <DateTimeInput value={editStart} onChange={setEditStart} />
+                </div>
+              </>
+            )}
             <div>
               <label className="label">Notes</label>
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <button className="btn-primary" onClick={finish} disabled={busy}>
-                Finish pumping
+            {active ? (
+              <div className="flex flex-col gap-2">
+                <button className="btn-primary" onClick={finish} disabled={busy}>
+                  Finish pumping
+                </button>
+                <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
+                  Save — keep pumping
+                </button>
+              </div>
+            ) : (
+              <button className="btn-primary" onClick={() => start(fromDatetimeLocalValue(editStart), notes || null)} disabled={busy || !editStart}>
+                Start pumping
               </button>
-              <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
-                Save — keep pumping
-              </button>
-            </div>
+            )}
           </div>
         </Modal>
       )}

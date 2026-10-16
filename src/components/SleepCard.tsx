@@ -50,23 +50,31 @@ export default function SleepCard({ childId }: { childId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childId])
 
-  const start = async () => {
+  // Quick start: begins timing right now. The + button opens the modal instead.
+  const start = async (startIso = new Date().toISOString(), startNotes: string | null = null) => {
     if (!user) return
     setBusy(true)
     await supabase.from('sleep_sessions').insert({
       child_id: childId,
       logged_by: user.id,
-      start_time: new Date().toISOString()
+      start_time: startIso,
+      notes: startNotes
     })
     notifyPartner(childId, 'sleep_start')
     setBusy(false)
+    setShowModal(false)
+    loadActive()
     reload()
   }
 
   const openModal = () => {
-    if (!active) return
-    setEditStart(toDatetimeLocalValue(active.start_time))
-    setNotes(active.notes ?? '')
+    if (active) {
+      setEditStart(toDatetimeLocalValue(active.start_time))
+      setNotes(active.notes ?? '')
+    } else {
+      setEditStart(toDatetimeLocalValue(new Date().toISOString()))
+      setNotes('')
+    }
     setShowModal(true)
   }
 
@@ -108,7 +116,7 @@ export default function SleepCard({ childId }: { childId: string }) {
   const lastMinutes = lastDone?.end_time ? (new Date(lastDone.end_time).getTime() - new Date(lastDone.start_time).getTime()) / 60000 : 0
 
   return (
-    <TrackerCard title="Sleep" color="sleep" onAdd={active ? openModal : start}>
+    <TrackerCard title="Sleep" color="sleep" onAdd={openModal}>
       {!active && lastDone && (
         <LastSummary icon="🌙" label="Woke up" time={lastDone.end_time} value={formatDurationMinutes(lastMinutes) ?? ''} />
       )}
@@ -121,7 +129,7 @@ export default function SleepCard({ childId }: { childId: string }) {
           </button>
         </>
       ) : (
-        <button className="btn-secondary" onClick={start} disabled={busy}>
+        <button className="btn-secondary" onClick={() => start()} disabled={busy}>
           Start sleep
         </button>
       )}
@@ -130,8 +138,8 @@ export default function SleepCard({ childId }: { childId: string }) {
         <Modal title="Sleep" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
             <div className="text-center py-2">
-              <p className="text-parchment-300 text-sm mb-1">Total time so far</p>
-              <p className="text-4xl font-display tabular-nums">{formatDurationMinutes(liveMinutes)}</p>
+              <p className="text-parchment-300 text-sm mb-1">{active ? 'Total time so far' : 'Not started'}</p>
+              <p className="text-4xl font-display tabular-nums">{active ? formatDurationMinutes(liveMinutes) : '0m'}</p>
             </div>
 
             <div>
@@ -143,14 +151,20 @@ export default function SleepCard({ childId }: { childId: string }) {
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <button className="btn-primary" onClick={wakeUp} disabled={busy}>
-                Wake up &amp; stop
+            {active ? (
+              <div className="flex flex-col gap-2">
+                <button className="btn-primary" onClick={wakeUp} disabled={busy}>
+                  Wake up &amp; stop
+                </button>
+                <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
+                  Save — keep sleeping
+                </button>
+              </div>
+            ) : (
+              <button className="btn-primary" onClick={() => start(fromDatetimeLocalValue(editStart), notes || null)} disabled={busy || !editStart}>
+                Start sleep
               </button>
-              <button className="btn-secondary" onClick={saveOnly} disabled={busy}>
-                Save — keep sleeping
-              </button>
-            </div>
+            )}
           </div>
         </Modal>
       )}
