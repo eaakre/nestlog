@@ -38,6 +38,8 @@ export default function SectionHistory<T extends { id: string; logged_by: string
         {visible.map((row) => {
           const { text, sub, barPct } = describe(row, unit)
           const selectable = !!onSelect && (canSelect ? canSelect(row) : true)
+          // Short details (a sleep length) sit beside the text; longer ones (colors, L/R amounts) get their own line.
+          const longSub = !!sub && sub.length > 10
           const who = showNames ? members[row.logged_by] : undefined
 
           const content = (
@@ -45,9 +47,10 @@ export default function SectionHistory<T extends { id: string; logged_by: string
               <span className="text-xl shrink-0">{icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-parchment-100 text-base truncate">{text}</p>
-                  {sub && <p className="text-parchment-100 text-sm font-semibold shrink-0">{sub}</p>}
+                  <p className={`text-parchment-100 text-base ${longSub ? '' : 'truncate'}`}>{text}</p>
+                  {sub && !longSub && <p className="text-parchment-100 text-sm font-semibold shrink-0">{sub}</p>}
                 </div>
+                {sub && longSub && <p className="text-parchment-100 text-sm font-semibold">{sub}</p>}
                 {barPct != null && (
                   <div className="h-1 rounded-full bg-night-700 mt-1 overflow-hidden">
                     <div className="h-full rounded-full bg-night-600" style={{ width: `${Math.max(4, barPct)}%` }} />
