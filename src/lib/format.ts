@@ -1,4 +1,4 @@
-import { formatDistanceToNowStrict, format, intervalToDuration } from 'date-fns'
+import { formatDistanceToNowStrict, format, intervalToDuration, isToday, isYesterday, differenceInCalendarDays } from 'date-fns'
 
 export function formatClock(iso: string) {
   return format(new Date(iso), 'h:mm a')
@@ -34,4 +34,26 @@ export function toDatetimeLocalValue(iso: string) {
 
 export function fromDatetimeLocalValue(value: string) {
   return new Date(value).toISOString()
+}
+
+/** "4h 12m ago", "23m ago", "1d 3h ago": hours and minutes, for the big readout on a card. */
+export function formatAgo(iso: string, nowMs = Date.now()) {
+  const mins = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 60000))
+  if (mins < 1) return 'just now'
+  const d = Math.floor(mins / 1440)
+  const h = Math.floor((mins % 1440) / 60)
+  const m = mins % 60
+  if (d > 0) return `${d}d ${h}h ago`
+  if (h > 0) return `${h}h ${m}m ago`
+  return `${m}m ago`
+}
+
+/** "8:23am" for today; "Yesterday 8:23am", "Wed 8:23am" or "Oct 3 8:23am" for earlier entries. */
+export function formatEntryTime(iso: string) {
+  const d = new Date(iso)
+  const clock = format(d, 'h:mmaaa')
+  if (isToday(d)) return clock
+  if (isYesterday(d)) return `Yesterday ${clock}`
+  if (differenceInCalendarDays(new Date(), d) < 7) return `${format(d, 'EEE')} ${clock}`
+  return `${format(d, 'MMM d')} ${clock}`
 }

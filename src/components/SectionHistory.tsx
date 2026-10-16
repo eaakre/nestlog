@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatRelative } from '../lib/format'
+import { formatEntryTime } from '../lib/format'
 import { useUnit, type Unit } from '../lib/units'
 import { useChildren } from '../contexts/ChildContext'
 import type { EntryDescription } from '../lib/describe'
@@ -54,7 +54,7 @@ export default function SectionHistory<T extends { id: string; logged_by: string
                   </div>
                 )}
                 <p className="text-parchment-300 text-sm mt-0.5">
-                  {formatRelative(row[timeField] as unknown as string)}
+                  {formatEntryTime(row[timeField] as unknown as string)}
                   {who ? ` · ${who}` : ''}
                 </p>
               </div>
