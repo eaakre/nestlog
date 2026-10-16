@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
 import { useRecentRows } from '../lib/useRecentRows'
-import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue } from '../lib/format'
+import { formatElapsed, toDatetimeLocalValue, fromDatetimeLocalValue, formatDurationMinutes } from '../lib/format'
 import DateTimeInput from './DateTimeInput'
+import ModeToggle, { localValue, thirtyAgo, type EntryMode } from './ModeToggle'
 import { describePumping } from '../lib/describe'
 import { useUnit, mlToUnit } from '../lib/units'
 import { buildPumpFields, pumpFieldText } from '../lib/pumping'
@@ -27,6 +28,14 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const [right, setRight] = useState('')
   const [notes, setNotes] = useState('')
   const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [mode, setMode] = useState<EntryMode>('live')
+  // An untouched start time means "now" at the moment you tap Start, not when the screen opened.
+  const startTouched = useRef(false)
+  const editStartText = (v: string) => {
+    startTouched.current = true
+    setEditStart(v)
+  }
   const [editing, setEditing] = useState<PumpingSession | null>(null)
   const now = useNow()
   const { rows, reload } = useRecentRows<PumpingSession>('pumping_sessions', childId, 'start_time')
@@ -75,6 +84,9 @@ export default function PumpingCard({ childId }: { childId: string }) {
   }
 
   const openModal = () => {
+    startTouched.current = false
+    setMode('live')
+    setEditEnd('')
     if (active) {
       const t = pumpFieldText(active, unit)
       setLeft(t.left)
@@ -88,6 +100,39 @@ export default function PumpingCard({ childId }: { childId: string }) {
     }
     setShowModal(true)
   }
+
+  const changeMode = (m: EntryMode) => {
+    setMode(m)
+    startTouched.current = m === 'done'
+    if (m === 'done') {
+      setEditEnd(localValue(new Date()))
+      setEditStart(thirtyAgo())
+    } else {
+      setEditEnd('')
+      setEditStart(localValue(new Date()))
+    }
+  }
+
+  // Log a pump that already happened, with its amounts.
+  const saveFinished = async () => {
+    if (!user || !editStart || !editEnd) return
+    setBusy(true)
+    await supabase.from('pumping_sessions').insert({
+      child_id: childId,
+      logged_by: user.id,
+      start_time: fromDatetimeLocalValue(editStart),
+      end_time: fromDatetimeLocalValue(editEnd),
+      ...buildPumpFields({ left, right, unit }),
+      notes: notes || null
+    })
+    setBusy(false)
+    setShowModal(false)
+    setLeft('')
+    setRight('')
+    reload()
+  }
+
+  const doneMinutes = editStart && editEnd ? (new Date(fromDatetimeLocalValue(editEnd)).getTime() - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000 : 0
 
   // Save without ending the pump — the timer keeps counting.
   const saveOnly = async () => {
@@ -155,14 +200,24 @@ export default function PumpingCard({ childId }: { childId: string }) {
               <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
             ) : (
               <>
+                <ModeToggle mode={mode} onChange={changeMode} liveLabel="Start now" />
                 <div className="text-center py-2">
-                  <p className="text-parchment-300 text-sm mb-1">Not started</p>
-                  <p className="text-4xl font-display tabular-nums">0m</p>
+                  <p className="text-parchment-300 text-sm mb-1">{mode === 'done' ? 'Total time' : 'Not started'}</p>
+                  <p className="text-4xl font-display tabular-nums">{mode === 'done' ? (doneMinutes > 0 ? formatDurationMinutes(doneMinutes) : '—') : '0m'}</p>
                 </div>
                 <div>
                   <label className="label">Start time</label>
-                  <DateTimeInput value={editStart} onChange={setEditStart} />
+                  <DateTimeInput value={editStart} onChange={editStartText} />
                 </div>
+                {mode === 'done' && (
+                  <>
+                    <div>
+                      <label className="label">End time</label>
+                      <DateTimeInput value={editEnd} onChange={setEditEnd} />
+                    </div>
+                    <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
+                  </>
+                )}
               </>
             )}
             <div>
@@ -179,8 +234,12 @@ export default function PumpingCard({ childId }: { childId: string }) {
                   Save — keep pumping
                 </button>
               </div>
+            ) : mode === 'done' ? (
+              <button className="btn-primary" onClick={saveFinished} disabled={busy || !(doneMinutes > 0)}>
+                Save pump
+              </button>
             ) : (
-              <button className="btn-primary" onClick={() => start(fromDatetimeLocalValue(editStart), notes || null)} disabled={busy || !editStart}>
+              <button className="btn-primary" onClick={() => start(startTouched.current ? fromDatetimeLocalValue(editStart) : new Date().toISOString(), notes || null)} disabled={busy || !editStart}>
                 Start pumping
               </button>
             )}

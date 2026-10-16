@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
 import { useNow } from '../lib/useNow'
-import { formatElapsed } from '../lib/format'
+import { formatElapsed, fromDatetimeLocalValue } from '../lib/format'
+import DateTimeInput from './DateTimeInput'
+import ModeToggle, { localValue, thirtyAgo, type EntryMode } from './ModeToggle'
 import { describeFeeding } from '../lib/describe'
 import { useRecentRows } from '../lib/useRecentRows'
 import { useUnit, mlToUnit, unitToMl } from '../lib/units'
@@ -51,6 +53,20 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
   const [amount, setAmount] = useState('')
 
+  // When did it happen: now (live timer) or already finished (typed in).
+  const [mode, setMode] = useState<EntryMode>('live')
+  const [startText, setStartText] = useState('')
+  // Untouched start fields mean "right now" at the moment you tap start/save, not when the screen opened.
+  const startTouched = useRef(false)
+  const editStartText = (v: string) => {
+    startTouched.current = true
+    setStartText(v)
+  }
+  const liveStartIso = () => (startTouched.current && startText ? fromDatetimeLocalValue(startText) : new Date().toISOString())
+  const [leftMin, setLeftMin] = useState('')
+  const [rightMin, setRightMin] = useState('')
+  const [endSide, setEndSide] = useState<'left' | 'right'>('right')
+
   // Pick up an in-progress breastfeed on load (e.g. you or your partner
   // started one earlier and didn't finish it yet).
   useEffect(() => {
@@ -97,7 +113,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const ensureRow = async (): Promise<string | null> => {
     if (activeFeedingId) return activeFeedingId
     if (!user) return null
-    const startIso = new Date().toISOString()
+    const startIso = liveStartIso()
     const { data } = await supabase
       .from('feedings')
       .insert({
@@ -154,6 +170,8 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setActiveFeedingId(null)
     setNotes('')
     setAmount('')
+    setStartText('')
+    startTouched.current = false
   }
 
   // Persist current progress but leave the session open — the timer on the
@@ -214,7 +232,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const saveBottleOrSolid = async () => {
     if (!user) return
     setBusy(true)
-    const nowIso = new Date().toISOString()
+    const nowIso = liveStartIso()
     await supabase.from('feedings').insert({
       child_id: childId,
       logged_by: user.id,
@@ -238,9 +256,46 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
   const closeModal = () => setOpen(false)
 
+  const changeMode = (m: EntryMode) => {
+    setMode(m)
+    startTouched.current = m === 'done'
+    setStartText(m === 'done' ? thirtyAgo() : localValue(new Date()))
+  }
+
+  const doneLeft = Math.max(0, Number(leftMin) || 0)
+  const doneRight = Math.max(0, Number(rightMin) || 0)
+
+  // Log a breastfeed that already happened, from typed-in minutes per side.
+  const saveFinishedBreast = async () => {
+    if (!user || !startText || doneLeft + doneRight <= 0) return
+    setBusy(true)
+    const startIso = fromDatetimeLocalValue(startText)
+    const side: Side = doneLeft > 0 && doneRight > 0 ? endSide : doneLeft > 0 ? 'left' : 'right'
+    await supabase.from('feedings').insert({
+      child_id: childId,
+      logged_by: user.id,
+      type: 'breast',
+      start_time: startIso,
+      end_time: new Date(new Date(startIso).getTime() + (doneLeft + doneRight) * 60000).toISOString(),
+      side,
+      amount_ml: null,
+      duration_minutes: doneLeft + doneRight,
+      duration_left_minutes: doneLeft,
+      duration_right_minutes: doneRight,
+      notes: notes || null
+    })
+    setBusy(false)
+    setOpen(false)
+    setLeftMin('')
+    setRightMin('')
+    setNotes('')
+    reload()
+  }
+
   const handleAdd = () => {
     if (activeFeedingId) {
       setType('breast')
+      setMode('live')
       setOpen(true)
     } else {
       setShowChooser(true)
@@ -249,6 +304,11 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
   const chooseType = (t: FeedingType) => {
     setType(t)
+    setMode('live')
+    startTouched.current = false
+    setStartText(localValue(new Date()))
+    setLeftMin('')
+    setRightMin('')
     setShowChooser(false)
     setOpen(true)
   }
@@ -313,8 +373,53 @@ export default function FeedingCard({ childId }: { childId: string }) {
       {open && (
         <Modal title={type === 'breast' ? 'Breastfeed' : type === 'bottle' ? 'Bottle Feed' : 'Solid Food'} onClose={closeModal}>
           <div className="flex flex-col gap-4">
-            {type === 'breast' && (
+            {type === 'breast' && !activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && (
+              <ModeToggle mode={mode} onChange={changeMode} liveLabel="Start now" />
+            )}
+
+            {type === 'breast' && mode === 'done' && !activeFeedingId && (
               <>
+                <div>
+                  <label className="label">Start time</label>
+                  <DateTimeInput value={startText} onChange={editStartText} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Left (minutes)</label>
+                    <input className="input" type="number" inputMode="decimal" value={leftMin} onChange={(e) => setLeftMin(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Right (minutes)</label>
+                    <input className="input" type="number" inputMode="decimal" value={rightMin} onChange={(e) => setRightMin(e.target.value)} />
+                  </div>
+                </div>
+                {doneLeft > 0 && doneRight > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-parchment-300">Ended on</span>
+                    <div className="flex rounded-xl overflow-hidden border border-night-700">
+                      {(['left', 'right'] as const).map((s) => (
+                        <button key={s} type="button" onClick={() => setEndSide(s)} className={`px-4 py-1 capitalize ${endSide === s ? 'bg-dusk-500 text-night-950' : 'bg-night-950 text-parchment-300'}`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm border-t border-night-700 pt-3">
+                  <span className="text-parchment-300">Total time</span>
+                  <span className="text-parchment-100">{doneLeft + doneRight}m</span>
+                </div>
+              </>
+            )}
+
+            {type === 'breast' && !(mode === 'done' && !activeFeedingId) && (
+              <>
+                {!activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && (
+                  <div>
+                    <label className="label">Started at</label>
+                    <DateTimeInput value={startText} onChange={editStartText} />
+                  </div>
+                )}
                 {!activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && previousLastSide && (
                   <div className="rounded-xl bg-night-950 border border-night-700 px-4 py-2 text-sm flex items-center justify-between">
                     <span className="text-parchment-300">Last side</span>
@@ -366,6 +471,13 @@ export default function FeedingCard({ childId }: { childId: string }) {
               </>
             )}
 
+            {type !== 'breast' && (
+              <div>
+                <label className="label">Time</label>
+                <DateTimeInput value={startText} onChange={editStartText} />
+              </div>
+            )}
+
             {type === 'bottle' && (
               <div>
                 <label className="label">Amount ({unit})</label>
@@ -378,7 +490,11 @@ export default function FeedingCard({ childId }: { childId: string }) {
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
 
-            {type === 'breast' ? (
+            {type === 'breast' && mode === 'done' && !activeFeedingId ? (
+              <button className="btn-primary" onClick={saveFinishedBreast} disabled={busy || !startText || doneLeft + doneRight <= 0}>
+                Save feeding
+              </button>
+            ) : type === 'breast' ? (
               <div className="flex flex-col gap-2">
                 <button className="btn-primary" onClick={finishBreastfeed} disabled={busy}>
                   Done feeding

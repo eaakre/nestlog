@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { notifyPartner } from '../lib/notify'
 import { useAuth } from '../contexts/AuthContext'
@@ -13,6 +13,7 @@ import LastSummary from './LastSummary'
 import SleepEditor from './editors/SleepEditor'
 import type { SleepSession } from '../types'
 import DateTimeInput from './DateTimeInput'
+import ModeToggle, { localValue, thirtyAgo, type EntryMode } from './ModeToggle'
 
 export default function SleepCard({ childId }: { childId: string }) {
   const { user } = useAuth()
@@ -23,6 +24,14 @@ export default function SleepCard({ childId }: { childId: string }) {
 
   const [showModal, setShowModal] = useState(false)
   const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [mode, setMode] = useState<EntryMode>('live')
+  // An untouched start time means "now" at the moment you tap Start, not when the screen opened.
+  const startTouched = useRef(false)
+  const editStartText = (v: string) => {
+    startTouched.current = true
+    setEditStart(v)
+  }
   const [notes, setNotes] = useState('')
   const [editing, setEditing] = useState<SleepSession | null>(null)
 
@@ -68,6 +77,9 @@ export default function SleepCard({ childId }: { childId: string }) {
   }
 
   const openModal = () => {
+    startTouched.current = false
+    setMode('live')
+    setEditEnd('')
     if (active) {
       setEditStart(toDatetimeLocalValue(active.start_time))
       setNotes(active.notes ?? '')
@@ -77,6 +89,36 @@ export default function SleepCard({ childId }: { childId: string }) {
     }
     setShowModal(true)
   }
+
+  const changeMode = (m: EntryMode) => {
+    setMode(m)
+    startTouched.current = m === 'done'
+    if (m === 'done') {
+      setEditEnd(localValue(new Date()))
+      setEditStart(thirtyAgo())
+    } else {
+      setEditEnd('')
+      setEditStart(localValue(new Date()))
+    }
+  }
+
+  // Log a sleep that already happened.
+  const saveFinished = async () => {
+    if (!user || !editStart || !editEnd) return
+    setBusy(true)
+    await supabase.from('sleep_sessions').insert({
+      child_id: childId,
+      logged_by: user.id,
+      start_time: fromDatetimeLocalValue(editStart),
+      end_time: fromDatetimeLocalValue(editEnd),
+      notes: notes || null
+    })
+    setBusy(false)
+    setShowModal(false)
+    reload()
+  }
+
+  const doneMinutes = editStart && editEnd ? (new Date(fromDatetimeLocalValue(editEnd)).getTime() - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000 : 0
 
   const liveMinutes = editStart ? Math.max(0, (now - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000) : 0
 
@@ -137,15 +179,25 @@ export default function SleepCard({ childId }: { childId: string }) {
       {showModal && (
         <Modal title="Sleep" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
+            {!active && <ModeToggle mode={mode} onChange={changeMode} liveLabel="Start now" />}
+
             <div className="text-center py-2">
-              <p className="text-parchment-300 text-sm mb-1">{active ? 'Total time so far' : 'Not started'}</p>
-              <p className="text-4xl font-display tabular-nums">{active ? formatDurationMinutes(liveMinutes) : '0m'}</p>
+              <p className="text-parchment-300 text-sm mb-1">{active ? 'Total time so far' : mode === 'done' ? 'Total sleep' : 'Not started'}</p>
+              <p className="text-4xl font-display tabular-nums">
+                {active ? formatDurationMinutes(liveMinutes) : mode === 'done' ? (doneMinutes > 0 ? formatDurationMinutes(doneMinutes) : '—') : '0m'}
+              </p>
             </div>
 
             <div>
               <label className="label">Start time</label>
-              <DateTimeInput value={editStart} onChange={setEditStart} />
+              <DateTimeInput value={editStart} onChange={editStartText} />
             </div>
+            {!active && mode === 'done' && (
+              <div>
+                <label className="label">End time</label>
+                <DateTimeInput value={editEnd} onChange={setEditEnd} />
+              </div>
+            )}
             <div>
               <label className="label">Notes</label>
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
@@ -160,8 +212,12 @@ export default function SleepCard({ childId }: { childId: string }) {
                   Save — keep sleeping
                 </button>
               </div>
+            ) : mode === 'done' ? (
+              <button className="btn-primary" onClick={saveFinished} disabled={busy || !(doneMinutes > 0)}>
+                Save sleep
+              </button>
             ) : (
-              <button className="btn-primary" onClick={() => start(fromDatetimeLocalValue(editStart), notes || null)} disabled={busy || !editStart}>
+              <button className="btn-primary" onClick={() => start(startTouched.current ? fromDatetimeLocalValue(editStart) : new Date().toISOString(), notes || null)} disabled={busy || !editStart}>
                 Start sleep
               </button>
             )}
