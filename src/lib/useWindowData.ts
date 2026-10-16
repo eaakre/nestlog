@@ -16,17 +16,27 @@ export function useWindowData(childId: string, fromMs: number, toMs: number) {
     const from = new Date(fromMs).toISOString()
     const to = new Date(toMs).toISOString()
     const overlap = `end_time.is.null,end_time.gte.${from}`
+    // Supabase caps a response at 1000 rows, so page through (newest first, stable order).
+    const all = async <T,>(build: (lo: number, hi: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> => {
+      const out: T[] = []
+      for (let lo = 0; lo < 20000; lo += 1000) {
+        const { data } = await build(lo, lo + 999)
+        out.push(...(data ?? []))
+        if (!data || data.length < 1000) break
+      }
+      return out
+    }
     const [sleep, feedings, diapers, pumping] = await Promise.all([
-      supabase.from('sleep_sessions').select('*').eq('child_id', childId).lt('start_time', to).or(overlap).limit(2000),
-      supabase.from('feedings').select('*').eq('child_id', childId).gte('start_time', from).lt('start_time', to).limit(2000),
-      supabase.from('diapers').select('*').eq('child_id', childId).gte('time', from).lt('time', to).limit(2000),
-      supabase.from('pumping_sessions').select('*').eq('child_id', childId).lt('start_time', to).or(overlap).limit(2000)
+      all((lo, hi) => supabase.from('sleep_sessions').select('*').eq('child_id', childId).lt('start_time', to).or(overlap).order('start_time', { ascending: false }).range(lo, hi)),
+      all((lo, hi) => supabase.from('feedings').select('*').eq('child_id', childId).gte('start_time', from).lt('start_time', to).order('start_time', { ascending: false }).range(lo, hi)),
+      all((lo, hi) => supabase.from('diapers').select('*').eq('child_id', childId).gte('time', from).lt('time', to).order('time', { ascending: false }).range(lo, hi)),
+      all((lo, hi) => supabase.from('pumping_sessions').select('*').eq('child_id', childId).lt('start_time', to).or(overlap).order('start_time', { ascending: false }).range(lo, hi))
     ])
     setData({
-      sleep: (sleep.data as SleepSession[]) ?? [],
-      feedings: (feedings.data as Feeding[]) ?? [],
-      diapers: (diapers.data as Diaper[]) ?? [],
-      pumping: (pumping.data as PumpingSession[]) ?? []
+      sleep: sleep as SleepSession[],
+      feedings: feedings as Feeding[],
+      diapers: diapers as Diaper[],
+      pumping: pumping as PumpingSession[]
     })
     setLoading(false)
   }, [childId, fromMs, toMs])
