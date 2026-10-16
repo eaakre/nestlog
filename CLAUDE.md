@@ -8,7 +8,7 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 ## Commands
 - `npm install`, `npm run dev`, `npm run build` (runs `tsc -b && vite build`)
 - Env: copy `.env.example` to `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_VAPID_PUBLIC_KEY`)
-- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos)
+- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys)
 
 ## Architecture notes
 - Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to the logger and to anyone sharing the linked child.
@@ -24,8 +24,10 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 
 - History (`src/pages/History.tsx`): 7-day time-of-day grid built from `src/lib/timeline.ts` (`blocksForDay`); filters persist in localStorage; tapping a block opens its editor (pumping only for its logger). Trends (`src/pages/Trends.tsx`): metrics defined in `src/lib/metrics.ts` as per-day `{v,w}` series; headline = weighted mean over days with entries; delta compares to the previous equal-length window; daytime = 7AM–7PM (`DAY_START_HOUR/DAY_END_HOUR`). Charts: `components/charts/BarChart.tsx`. `BottomNav` is on Activity/History/Trends/Account.
 
+- Nara import: `scripts/nara_to_sql.py <csv> <out_dir> <erik_id> <angel_id>` writes SQL for the Supabase SQL editor (bypasses RLS so each caregiver's rows are attributed to them). Rows carry `import_key`, so re-running is safe, and rows within 2 minutes of a hand-logged Nestlog row are skipped. Never commit the CSV or generated SQL (personal data).
+
 ## Not built yet
-Child avatar/date header, Nara data import (needs a real export file), offline queue, password reset, data export, leave/remove child, tests.
+Child avatar/date header, offline queue, password reset, data export, leave/remove child, tests.
 
 ## Conventions
 - Small focused commits. `main` is the branch.
