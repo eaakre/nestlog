@@ -41,11 +41,10 @@ export default function PumpingCard({ childId }: { childId: string }) {
   const { rows, reload } = useRecentRows<PumpingSession>('pumping_sessions', childId, 'start_time')
 
   const loadActive = async () => {
-    if (!user) return
     const { data } = await supabase
       .from('pumping_sessions')
       .select('*')
-      .eq('logged_by', user.id)
+      .eq('child_id', childId)
       .is('end_time', null)
       .order('start_time', { ascending: false })
       .limit(1)
@@ -55,16 +54,15 @@ export default function PumpingCard({ childId }: { childId: string }) {
 
   useEffect(() => {
     loadActive()
-    if (!user) return
     const channel = supabase
-      .channel(`pumping-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pumping_sessions', filter: `logged_by=eq.${user.id}` }, loadActive)
+      .channel(`pumping-${childId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pumping_sessions', filter: `child_id=eq.${childId}` }, loadActive)
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
+  }, [childId])
 
   // Quick start: begins timing right now. The + button opens the modal instead.
   const start = async (startIso = new Date().toISOString(), startNotes: string | null = null) => {
