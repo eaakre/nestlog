@@ -32,6 +32,13 @@ export default function SleepCard({ childId }: { childId: string }) {
     startTouched.current = true
     setEditStart(v)
   }
+  // End time for a running timer: untouched means "now" at the moment you tap the button.
+  const endTouched = useRef(false)
+  const editEndText = (v: string) => {
+    endTouched.current = true
+    setEditEnd(v)
+  }
+  const endIso = () => (endTouched.current && editEnd ? fromDatetimeLocalValue(editEnd) : new Date().toISOString())
   const [notes, setNotes] = useState('')
   const [editing, setEditing] = useState<SleepSession | null>(null)
 
@@ -78,9 +85,11 @@ export default function SleepCard({ childId }: { childId: string }) {
 
   const openModal = () => {
     startTouched.current = false
+    endTouched.current = false
     setMode('live')
     setEditEnd('')
     if (active) {
+      setEditEnd(localValue(new Date()))
       setEditStart(toDatetimeLocalValue(active.start_time))
       setNotes(active.notes ?? '')
     } else {
@@ -120,7 +129,9 @@ export default function SleepCard({ childId }: { childId: string }) {
 
   const doneMinutes = editStart && editEnd ? (new Date(fromDatetimeLocalValue(editEnd)).getTime() - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000 : 0
 
-  const liveMinutes = editStart ? Math.max(0, (now - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000) : 0
+  const activeEndMs = endTouched.current && editEnd ? new Date(fromDatetimeLocalValue(editEnd)).getTime() : now
+  const liveMinutes = editStart ? (activeEndMs - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000 : 0
+  const endBeforeStart = !!active && liveMinutes < 0
 
   // Save without ending the sleep — the timer keeps counting.
   const saveOnly = async () => {
@@ -144,7 +155,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       .from('sleep_sessions')
       .update({
         start_time: fromDatetimeLocalValue(editStart),
-        end_time: new Date().toISOString(),
+        end_time: endIso(),
         notes: notes || null
       })
       .eq('id', active.id)
@@ -184,7 +195,7 @@ export default function SleepCard({ childId }: { childId: string }) {
             <div className="text-center py-2">
               <p className="text-parchment-300 text-sm mb-1">{active ? 'Total time so far' : mode === 'done' ? 'Total sleep' : 'Not started'}</p>
               <p className="text-4xl font-display tabular-nums">
-                {active ? formatDurationMinutes(liveMinutes) : mode === 'done' ? (doneMinutes > 0 ? formatDurationMinutes(doneMinutes) : '—') : '0m'}
+                {active ? formatDurationMinutes(Math.max(0, liveMinutes)) : mode === 'done' ? (doneMinutes > 0 ? formatDurationMinutes(doneMinutes) : '—') : '0m'}
               </p>
             </div>
 
@@ -198,6 +209,13 @@ export default function SleepCard({ childId }: { childId: string }) {
                 <DateTimeInput value={editEnd} onChange={setEditEnd} />
               </div>
             )}
+            {active && (
+              <div>
+                <label className="label">End time (now unless you change it)</label>
+                <DateTimeInput value={editEnd} onChange={editEndText} />
+                {endBeforeStart && <p className="text-sm text-red-300 mt-1">End time is before the start time.</p>}
+              </div>
+            )}
             <div>
               <label className="label">Notes</label>
               <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
@@ -205,7 +223,7 @@ export default function SleepCard({ childId }: { childId: string }) {
 
             {active ? (
               <div className="flex flex-col gap-2">
-                <button className="btn-primary" onClick={wakeUp} disabled={busy}>
+                <button className="btn-primary" onClick={wakeUp} disabled={busy || endBeforeStart}>
                   Wake up &amp; stop
                 </button>
                 <button className="btn-secondary" onClick={saveOnly} disabled={busy}>

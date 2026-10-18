@@ -36,6 +36,13 @@ export default function PumpingCard({ childId }: { childId: string }) {
     startTouched.current = true
     setEditStart(v)
   }
+  // End time for a running timer: untouched means "now" at the moment you tap the button.
+  const endTouched = useRef(false)
+  const editEndText = (v: string) => {
+    endTouched.current = true
+    setEditEnd(v)
+  }
+  const endIso = () => (endTouched.current && editEnd ? fromDatetimeLocalValue(editEnd) : new Date().toISOString())
   const [editing, setEditing] = useState<PumpingSession | null>(null)
   const now = useNow()
   const { rows, reload } = useRecentRows<PumpingSession>('pumping_sessions', childId, 'start_time')
@@ -83,9 +90,11 @@ export default function PumpingCard({ childId }: { childId: string }) {
 
   const openModal = () => {
     startTouched.current = false
+    endTouched.current = false
     setMode('live')
     setEditEnd('')
     if (active) {
+      setEditEnd(localValue(new Date()))
       const t = pumpFieldText(active, unit)
       setLeft(t.left)
       setRight(t.right)
@@ -132,6 +141,8 @@ export default function PumpingCard({ childId }: { childId: string }) {
 
   const doneMinutes = editStart && editEnd ? (new Date(fromDatetimeLocalValue(editEnd)).getTime() - new Date(fromDatetimeLocalValue(editStart)).getTime()) / 60000 : 0
 
+  const endBeforeStart = !!active && endTouched.current && !!editEnd && new Date(fromDatetimeLocalValue(editEnd)).getTime() < new Date(active.start_time).getTime()
+
   // Save without ending the pump — the timer keeps counting.
   const saveOnly = async () => {
     if (!active) return
@@ -151,7 +162,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
     await supabase
       .from('pumping_sessions')
       .update({
-        end_time: new Date().toISOString(),
+        end_time: endIso(),
         ...buildPumpFields({ left, right, unit, existing: active }),
         notes: notes || null
       })
@@ -195,7 +206,14 @@ export default function PumpingCard({ childId }: { childId: string }) {
         <Modal title="Pumping" onClose={() => setShowModal(false)}>
           <div className="flex flex-col gap-4">
             {active ? (
-              <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
+              <>
+                <div>
+                  <label className="label">End time (now unless you change it)</label>
+                  <DateTimeInput value={editEnd} onChange={editEndText} />
+                  {endBeforeStart && <p className="text-sm text-red-300 mt-1">End time is before the start time.</p>}
+                </div>
+                <PumpAmountFields unit={unit} left={left} right={right} onLeft={setLeft} onRight={setRight} />
+              </>
             ) : (
               <>
                 <ModeToggle mode={mode} onChange={changeMode} liveLabel="Start now" />
@@ -225,7 +243,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
 
             {active ? (
               <div className="flex flex-col gap-2">
-                <button className="btn-primary" onClick={finish} disabled={busy}>
+                <button className="btn-primary" onClick={finish} disabled={busy || endBeforeStart}>
                   Finish pumping
                 </button>
                 <button className="btn-secondary" onClick={saveOnly} disabled={busy}>

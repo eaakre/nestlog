@@ -62,6 +62,13 @@ export default function FeedingCard({ childId }: { childId: string }) {
     startTouched.current = true
     setStartText(v)
   }
+  // End time when finishing a running breastfeed: untouched means "now" when you tap Done.
+  const [endText, setEndText] = useState('')
+  const endTouched = useRef(false)
+  const editEndText = (v: string) => {
+    endTouched.current = true
+    setEndText(v)
+  }
   const liveStartIso = () => (startTouched.current && startText ? fromDatetimeLocalValue(startText) : new Date().toISOString())
   const [leftMin, setLeftMin] = useState('')
   const [rightMin, setRightMin] = useState('')
@@ -172,6 +179,8 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setAmount('')
     setStartText('')
     startTouched.current = false
+    setEndText('')
+    endTouched.current = false
   }
 
   // Persist current progress but leave the session open — the timer on the
@@ -207,8 +216,11 @@ export default function FeedingCard({ childId }: { childId: string }) {
   const finishBreastfeed = async () => {
     if (!user) return
     setBusy(true)
-    const finalLeft = liveLeft
-    const finalRight = liveRight
+    const endIso = endTouched.current && endText ? fromDatetimeLocalValue(endText) : new Date().toISOString()
+    // If a side is still running, it stops at the chosen end time (not later).
+    const clip = activeSide && activeSince ? Math.max(0, (new Date(endIso).getTime() - activeSince) / 1000) : 0
+    const finalLeft = activeSide === 'left' ? leftSeconds + clip : leftSeconds
+    const finalRight = activeSide === 'right' ? rightSeconds + clip : rightSeconds
     const id = activeFeedingId ?? (await ensureRow())
     if (id) {
       await supabase
@@ -219,7 +231,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
           duration_left_minutes: Math.round((finalLeft / 60) * 10) / 10,
           duration_right_minutes: Math.round((finalRight / 60) * 10) / 10,
           notes: notes || null,
-          end_time: new Date().toISOString()
+          end_time: endIso
         })
         .eq('id', id)
     }
@@ -296,6 +308,8 @@ export default function FeedingCard({ childId }: { childId: string }) {
     if (activeFeedingId) {
       setType('breast')
       setMode('live')
+      endTouched.current = false
+      setEndText(localValue(new Date()))
       setOpen(true)
     } else {
       setShowChooser(true)
@@ -312,6 +326,8 @@ export default function FeedingCard({ childId }: { childId: string }) {
     setShowChooser(false)
     setOpen(true)
   }
+
+  const endBeforeStart = !!activeFeedingId && !!sessionStart && endTouched.current && !!endText && new Date(fromDatetimeLocalValue(endText)).getTime() < sessionStart
 
   const totalSeconds = liveLeft + liveRight
   const total = fmtMinSec(totalSeconds)
@@ -414,6 +430,13 @@ export default function FeedingCard({ childId }: { childId: string }) {
 
             {type === 'breast' && !(mode === 'done' && !activeFeedingId) && (
               <>
+                {activeFeedingId && (
+                  <div>
+                    <label className="label">Ended at (now unless you change it)</label>
+                    <DateTimeInput value={endText} onChange={editEndText} />
+                    {endBeforeStart && <p className="text-sm text-red-300 mt-1">End time is before the start time.</p>}
+                  </div>
+                )}
                 {!activeFeedingId && leftSeconds === 0 && rightSeconds === 0 && (
                   <div>
                     <label className="label">Started at</label>
@@ -496,7 +519,7 @@ export default function FeedingCard({ childId }: { childId: string }) {
               </button>
             ) : type === 'breast' ? (
               <div className="flex flex-col gap-2">
-                <button className="btn-primary" onClick={finishBreastfeed} disabled={busy}>
+                <button className="btn-primary" onClick={finishBreastfeed} disabled={busy || endBeforeStart}>
                   Done feeding
                 </button>
                 <button className="btn-secondary" onClick={saveProgress} disabled={busy}>
