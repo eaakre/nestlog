@@ -183,7 +183,7 @@ export default function PumpingCard({ childId }: { childId: string }) {
         <LastSummary
           icon="🍼"
           label="Last pump"
-          time={lastDone.end_time}
+          time={lastDone.start_time}
           value={lastDone.amount_ml != null ? String(mlToUnit(lastDone.amount_ml, unit)) : '—'}
           valueSub={lastDone.amount_ml != null ? unit : undefined}
         />
