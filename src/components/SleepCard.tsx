@@ -13,6 +13,8 @@ import LastSummary from './LastSummary'
 import SleepEditor from './editors/SleepEditor'
 import type { SleepSession } from '../types'
 import DateTimeInput from './DateTimeInput'
+import WakeWindowHint from './WakeWindowHint'
+import { useChildren } from '../contexts/ChildContext'
 import ModeToggle, { localValue, thirtyAgo, type EntryMode } from './ModeToggle'
 
 export default function SleepCard({ childId }: { childId: string }) {
@@ -20,7 +22,10 @@ export default function SleepCard({ childId }: { childId: string }) {
   const [active, setActive] = useState<SleepSession | null>(null)
   const [busy, setBusy] = useState(false)
   const now = useNow()
-  const { rows, reload } = useRecentRows<SleepSession>('sleep_sessions', childId, 'start_time')
+  const { activeChild } = useChildren()
+  // Fetch two-plus weeks so wake windows can learn from them; the history list still shows the latest 20.
+  const { rows: allRows, reload } = useRecentRows<SleepSession>('sleep_sessions', childId, 'start_time', 120)
+  const rows = allRows.slice(0, 20)
 
   const [showModal, setShowModal] = useState(false)
   const [editStart, setEditStart] = useState('')
@@ -172,6 +177,10 @@ export default function SleepCard({ childId }: { childId: string }) {
     <TrackerCard title="Sleep" color="sleep" onAdd={openModal}>
       {!active && lastDone && (
         <LastSummary icon="🌙" label="Woke up" time={lastDone.end_time} value={formatDurationMinutes(lastMinutes) ?? ''} />
+      )}
+
+      {!active && allRows.length > 0 && (
+        <WakeWindowHint sessions={allRows} birthDate={activeChild?.birth_date ?? null} name={activeChild?.name ?? 'Baby'} />
       )}
 
       {active ? (

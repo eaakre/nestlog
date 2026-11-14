@@ -84,7 +84,8 @@ there too.
 ## 6. Push notifications (optional)
 
 Gives you partner alerts ("Sam started a sleep"), "timer still running"
-reminders, and "it's been 3h since the last feeding" reminders. Works on
+reminders, "it's been 3h since the last feeding" reminders, and "nap window
+opens soon" reminders (run migration 0011 and redeploy `send-reminders`). Works on
 Android/desktop browsers, and on iPhone (iOS 16.4+) once the app is added to
 the Home Screen. Each person turns it on per device in **Settings → Notifications**.
 
@@ -112,7 +113,7 @@ the Home Screen. Each person turns it on per device in **Settings → Notificati
    $$);
    ```
 
-Partner alerts need only steps 1-4. Timer and feeding reminders need step 5.
+Partner alerts need only steps 1-4. Timer, feeding and nap reminders need step 5.
 Web notifications can't show a live ticking timer on the lock screen; they're
 one-shot messages.
 

@@ -1,8 +1,10 @@
 // Runs every few minutes on a schedule (see README). Sends:
 //  - "timer still running" reminders for open sleep / breastfeed / pumping sessions
 //  - "it's been N hours since the last feeding" reminders
+//  - "nap window opens soon" reminders (see _shared/wakeWindow.ts)
 // Each reminder is sent once per session / feeding thanks to sent_reminders.
 import { adminClient, pushToUsers } from '../_shared/push.ts'
+import { suggestNext } from '../_shared/wakeWindow.ts'
 
 Deno.serve(async (req) => {
   if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
@@ -17,8 +19,9 @@ Deno.serve(async (req) => {
     const { data: memberships } = await admin.from('child_members').select('child_id').eq('user_id', p.user_id)
     const childIds = (memberships ?? []).map((m) => m.child_id as string)
     if (childIds.length === 0) continue
-    const { data: kids } = await admin.from('children').select('id,name').in('id', childIds)
+    const { data: kids } = await admin.from('children').select('id,name,birth_date').in('id', childIds)
     const nameOf = new Map((kids ?? []).map((k) => [k.id as string, k.name as string]))
+    const birthOf = new Map((kids ?? []).map((k) => [k.id as string, (k.birth_date as string | null) ?? null]))
 
     const once = async (key: string, title: string, body: string, tag: string) => {
       const { error } = await admin.from('sent_reminders').insert({ key })
@@ -52,6 +55,36 @@ Deno.serve(async (req) => {
         const hours = (now - new Date(last.start_time).getTime()) / 3600000
         if (hours >= p.feed_hours)
           await once(`feed:${last.id}:${p.user_id}`, 'Feeding reminder', `It's been ${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m since ${nameOf.get(childId) ?? 'baby'}'s last feeding.`, 'feed-reminder')
+      }
+    }
+
+    if (p.nap_reminders) {
+      const tz = p.timezone || 'America/Chicago'
+      const fmtHour = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' })
+      const hourOf = (ms: number) => Number(fmtHour.format(new Date(ms)))
+      const fmtClock = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+      const since = new Date(now - 15 * 86400000).toISOString()
+      for (const childId of childIds) {
+        const { data: sessions } = await admin
+          .from('sleep_sessions')
+          .select('start_time,end_time')
+          .eq('child_id', childId)
+          .gte('start_time', since)
+          .order('start_time', { ascending: false })
+          .limit(300)
+        const s = suggestNext(sessions ?? [], birthOf.get(childId) ?? null, now, hourOf)
+        if (!s) continue
+        const lead = (p.nap_lead_minutes ?? 10) * 60000
+        // Send once per wake-up, from `lead` before the window opens until it closes.
+        if (now < s.opensMs - lead || now > s.closesMs) continue
+        const name = nameOf.get(childId) ?? 'Baby'
+        const what = s.kind === 'bedtime' ? 'bedtime' : 'nap'
+        const mins = Math.round((s.opensMs - now) / 60000)
+        const body =
+          mins > 0
+            ? `${name}'s ${what} window opens in about ${mins} min (${fmtClock.format(new Date(s.opensMs))}–${fmtClock.format(new Date(s.closesMs))}).`
+            : `${name}'s ${what} window is open now (until ${fmtClock.format(new Date(s.closesMs))}).`
+        await once(`nap:${childId}:${s.lastWakeMs}:${p.user_id}`, s.kind === 'bedtime' ? 'Bedtime window' : 'Nap window', body, 'nap-window')
       }
     }
   }

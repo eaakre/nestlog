@@ -8,7 +8,7 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 ## Commands
 - `npm install`, `npm run dev`, `npm run build` (runs `tsc -b && vite build`)
 - Env: copy `.env.example` to `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_VAPID_PUBLIC_KEY`)
-- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys, 0010 co-parent pumping edit)
+- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys, 0010 co-parent pumping edit, 0011 nap reminder prefs)
 
 ## Architecture notes
 - Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to, and editable by, the logger and anyone sharing the linked child.
@@ -23,6 +23,8 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 - Design: tokens in `tailwind.config.js` (night/parchment/dusk/sage/amber, `header.*` card colors). Fonts: Lora (headings), DM Sans (body). Use original code and colors, not Nara's assets.
 
 - History (`src/pages/History.tsx`): 7-day time-of-day grid built from `src/lib/timeline.ts` (`blocksForDay`); filters persist in localStorage; tapping a block opens its editor. Trends (`src/pages/Trends.tsx`): metrics defined in `src/lib/metrics.ts` as per-day `{v,w}` series; headline = weighted mean over days with entries; delta compares to the previous equal-length window; daytime = 7AM–7PM (`DAY_START_HOUR/DAY_END_HOUR`). Charts: `components/charts/BarChart.tsx`. `BottomNav` is on Activity/History/Trends/Account.
+
+- Wake windows: `supabase/functions/_shared/wakeWindow.ts` (pure, no imports; shared by the app and the Deno `send-reminders` function). Age range by month, pulled toward the median of the last 14 days of daytime wake gaps (needs 6+ samples, clamped to the age range). `suggestNext` returns the nap/bedtime window (±15 min around the typical gap), or null while asleep. UI: `WakeWindowHint` on the Sleep card (`SleepCard` fetches 120 sleep rows but lists 20). Push: nap block in `send-reminders`, prefs `nap_reminders`/`nap_lead_minutes`/`timezone` on `notification_prefs` (the client keeps `timezone` current; the job runs in UTC).
 
 - Nara import: `scripts/nara_to_sql.py <csv> <out_dir> <erik_id> <angel_id>` writes SQL for the Supabase SQL editor (bypasses RLS so each caregiver's rows are attributed to them). Rows carry `import_key`, so re-running is safe, and rows within 2 minutes of a hand-logged Nestlog row are skipped. Never commit the CSV or generated SQL (personal data).
 
