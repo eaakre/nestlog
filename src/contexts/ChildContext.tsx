@@ -10,6 +10,7 @@ type ChildContextValue = {
   loading: boolean
   members: Record<string, string>
   createChild: (name: string, birthDate: string | null) => Promise<{ error: string | null; child: Child | null }>
+  updateBirthDate: (childId: string, birthDate: string) => Promise<{ error: string | null }>
   createInvite: (childId: string) => Promise<{ code: string | null; error: string | null }>
   redeemInvite: (code: string) => Promise<{ error: string | null }>
   refresh: () => Promise<void>
@@ -76,6 +77,15 @@ export function ChildProvider({ children }: { children: ReactNode }) {
     await refresh()
     setActiveChildId(id)
     return { error: null, child: { id, name, birth_date: birthDate, created_by: user.id } as Child }
+  }
+
+  // Select the row back so a blocked update (no policy / not a member) shows up as an error instead of silently doing nothing.
+  const updateBirthDate = async (childId: string, birthDate: string) => {
+    const { data, error } = await supabase.from('children').update({ birth_date: birthDate }).eq('id', childId).select('id')
+    if (error) return { error: error.message }
+    if (!data || data.length === 0) return { error: "Couldn't save. Run migration 0012 in Supabase, then try again." }
+    await refresh()
+    return { error: null }
   }
 
   const createInvite = async (childId: string) => {
@@ -148,6 +158,7 @@ export function ChildProvider({ children }: { children: ReactNode }) {
         loading,
         members,
         createChild,
+        updateBirthDate,
         createInvite,
         redeemInvite,
         refresh

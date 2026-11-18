@@ -8,7 +8,7 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 ## Commands
 - `npm install`, `npm run dev`, `npm run build` (runs `tsc -b && vite build`)
 - Env: copy `.env.example` to `.env` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_VAPID_PUBLIC_KEY`)
-- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys, 0010 co-parent pumping edit, 0011 nap reminder prefs)
+- DB: run `supabase/migrations/*.sql` in order in the Supabase SQL editor (0001 init, 0002 push, 0003 child-creator select policy, 0004 pumping per side, 0005 baby firsts + photo bucket, 0006 growth, 0007 entry photos, 0008 multi texture/color on diapers, 0009 import keys, 0010 co-parent pumping edit, 0011 nap reminder prefs, 0012 members can update children)
 
 ## Architecture notes
 - Access is via `child_members`; RLS uses `is_child_member(child_id)`. Pumping sessions are visible to, and editable by, the logger and anyone sharing the linked child.
@@ -27,6 +27,8 @@ Vite + React 18 + TypeScript, Tailwind CSS 3, react-router-dom 6, date-fns, vite
 - Wake windows: `supabase/functions/_shared/wakeWindow.ts` (pure, no imports; shared by the app and the Deno `send-reminders` function). Follows Hatch's published guide: `bracketFor(ageDays)` gives wake windows per slot of the day (e.g. 10–11 months = 2h45 / 3h15 / 3h45, last = before bedtime; ages round to the nearest month). `suggestNext` = last wake-up + the window for the next slot, where the slot = daytime sleeps since the last 4h+ night sleep. Returns one target time (nap or bedtime), or null while asleep. UI: `WakeWindowHint` on the Sleep card (`SleepCard` fetches 120 sleep rows but lists 20). Push: nap block in `send-reminders` notifies `nap_lead_minutes` before the target (once per wake-up); prefs `nap_reminders`/`nap_lead_minutes`/`timezone` on `notification_prefs` (the client keeps `timezone` current; the job runs in UTC). No per-baby learning: the table is used as published.
 
 - Nara import: `scripts/nara_to_sql.py <csv> <out_dir> <erik_id> <angel_id>` writes SQL for the Supabase SQL editor (bypasses RLS so each caregiver's rows are attributed to them). Rows carry `import_key`, so re-running is safe, and rows within 2 minutes of a hand-logged Nestlog row are skipped. Never commit the CSV or generated SQL (personal data).
+
+- Birth date: optional at onboarding, editable in Settings (`updateBirthDate` in `ChildContext`, needs migration 0012). Drives wake-window age and the "Age" lines on Firsts/Growth.
 
 ## Not built yet
 Child avatar/date header, offline queue, password reset, data export, leave/remove child, tests.

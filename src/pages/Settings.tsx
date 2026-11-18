@@ -6,15 +6,19 @@ import { useChildren } from '../contexts/ChildContext'
 import { useUnit } from '../lib/units'
 import BottomNav from '../components/BottomNav'
 import NotificationSettings from '../components/NotificationSettings'
+import DateInput from '../components/DateInput'
+import { formatAge, todayISO } from '../lib/age'
 import type { Profile } from '../types'
 
 export default function Settings() {
   const { user, profile, signOut } = useAuth()
-  const { activeChild, createInvite } = useChildren()
+  const { activeChild, createInvite, updateBirthDate } = useChildren()
   const { unit, setUnit } = useUnit()
   const [members, setMembers] = useState<Profile[]>([])
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [birthError, setBirthError] = useState<string | null>(null)
+  const [birthSaved, setBirthSaved] = useState(false)
 
   useEffect(() => {
     if (!activeChild) return
@@ -26,6 +30,15 @@ export default function Settings() {
         if (data) setMembers(data.map((row: any) => row.profiles).filter(Boolean))
       })
   }, [activeChild])
+
+  const saveBirthDate = async (v: string) => {
+    if (!activeChild || v === activeChild.birth_date) return
+    setBirthError(null)
+    setBirthSaved(false)
+    const { error } = await updateBirthDate(activeChild.id, v)
+    if (error) setBirthError(error)
+    else setBirthSaved(true)
+  }
 
   const invite = async () => {
     if (!activeChild) return
@@ -49,6 +62,23 @@ export default function Settings() {
         <p className="text-lg">{profile?.display_name ?? user?.email}</p>
         <p className="text-parchment-300 text-sm">{user?.email}</p>
       </div>
+
+      {activeChild && (
+        <div className="card mb-4 flex flex-col gap-3">
+          <div>
+            <p className="text-parchment-100">{activeChild.name}'s birth date</p>
+            <p className="text-parchment-300 text-xs">Sets the age used for wake-window suggestions.</p>
+          </div>
+          <DateInput value={activeChild.birth_date ?? ''} onChange={saveBirthDate} />
+          {activeChild.birth_date && (
+            <p className="text-parchment-300 text-sm">
+              Age: {formatAge(activeChild.birth_date, todayISO()) || 'not born yet'}
+              {birthSaved && <span className="text-sage-400"> · Saved</span>}
+            </p>
+          )}
+          {birthError && <p className="text-dusk-500 text-sm">{birthError}</p>}
+        </div>
+      )}
 
       {activeChild && (
         <div className="card mb-4 flex flex-col gap-3">
