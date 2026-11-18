@@ -33,9 +33,6 @@ export default function WakeWindowHint({ sessions, birthDate }: { sessions: Slee
       <p className="text-parchment-300 text-sm">
         at {clock(s.targetMs)} · awake {dur(now - s.lastWakeMs)}
       </p>
-      <p className="text-parchment-300 text-xs mt-1">
-        {dur(s.windowMin * 60000)} wake window for {s.ageLabel}
-      </p>
     </div>
   )
 }
