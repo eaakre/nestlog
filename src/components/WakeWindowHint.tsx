@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { suggestNext, ageInMonths, type SleepLike } from '../../supabase/functions/_shared/wakeWindow'
+import { suggestNext, type SleepLike } from '../../supabase/functions/_shared/wakeWindow'
 import { useNow } from '../lib/useNow'
 
 const dur = (ms: number) => {
@@ -8,35 +8,34 @@ const dur = (ms: number) => {
 }
 const clock = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }).replace(' ', '').toLowerCase()
 
-// "Next nap window in 1h 33m" under the Sleep card's last-sleep summary.
-export default function WakeWindowHint({ sessions, birthDate, name }: { sessions: SleepLike[]; birthDate: string | null; name: string }) {
+// "Next nap in 38m · 9:36pm" under the Sleep card's last-sleep summary.
+export default function WakeWindowHint({ sessions, birthDate }: { sessions: SleepLike[]; birthDate: string | null; name?: string }) {
   const now = useNow(30000)
   const s = useMemo(() => suggestNext(sessions, birthDate, now, (ms) => new Date(ms).getHours()), [sessions, birthDate, now])
   if (!s) return null
 
-  const label = s.kind === 'bedtime' ? 'Bedtime' : 'Nap'
-  const awake = dur(now - s.lastWakeMs)
+  const what = s.kind === 'bedtime' ? 'bedtime' : 'nap'
+  const late = now - s.targetMs
   let headline: string
   let tone = 'text-parchment-100'
-  if (now < s.opensMs) headline = `${label} window opens in ${dur(s.opensMs - now)}`
-  else if (now <= s.closesMs) {
-    headline = `${label} window is open`
+  if (late < 0) headline = `Next ${what} in ${dur(-late)}`
+  else if (late < 5 * 60000) {
+    headline = s.kind === 'bedtime' ? 'Time for bed' : 'Time for a nap'
     tone = 'text-sage-400'
   } else {
-    headline = `Past the usual ${label.toLowerCase()} window`
+    headline = `${s.kind === 'bedtime' ? 'Bedtime' : 'Nap'} was due ${dur(late)} ago`
     tone = 'text-amber-400'
   }
-
-  const months = ageInMonths(birthDate, now)
-  const basis = s.personalized ? `${name}'s last 2 weeks` : months != null ? `typical for ${months} month${months === 1 ? '' : 's'}` : 'typical for his age'
 
   return (
     <div className="rounded-xl bg-night-950 border border-night-700 px-4 py-3">
       <p className={`font-semibold ${tone}`}>{headline}</p>
       <p className="text-parchment-300 text-sm">
-        {clock(s.opensMs)}–{clock(s.closesMs)} · awake {awake}
+        at {clock(s.targetMs)} · awake {dur(now - s.lastWakeMs)}
       </p>
-      <p className="text-parchment-300 text-xs mt-1">Based on {basis}. A guide, not a rule.</p>
+      <p className="text-parchment-300 text-xs mt-1">
+        {dur(s.windowMin * 60000)} wake window for {s.ageLabel}. A guide, not a rule.
+      </p>
     </div>
   )
 }

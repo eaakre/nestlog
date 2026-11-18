@@ -110,12 +110,12 @@ export default function NotificationSettings() {
           />
         )}
 
-        <Row label="Nap window reminder" hint="Nudge me shortly before it's time for a nap (or bedtime), based on wake windows" checked={prefs.nap_reminders} onChange={(v) => savePrefs({ ...prefs, nap_reminders: v })} />
+        <Row label="Nap reminder" hint="Nudge me before the suggested nap or bedtime, based on wake windows" checked={prefs.nap_reminders} onChange={(v) => savePrefs({ ...prefs, nap_reminders: v })} />
         {prefs.nap_reminders && (
           <Select
             label="Notify me"
             value={prefs.nap_lead_minutes}
-            options={[[0, 'When it opens'], [10, '10 min before'], [15, '15 min before'], [20, '20 min before'], [30, '30 min before']]}
+            options={[[0, 'At nap time'], [10, '10 min before'], [15, '15 min before'], [20, '20 min before'], [30, '30 min before']]}
             onChange={(v) => savePrefs({ ...prefs, nap_lead_minutes: v })}
           />
         )}

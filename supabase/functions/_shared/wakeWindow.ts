@@ -1,73 +1,64 @@
 // Wake-window suggestions. Pure logic with no imports so the app (Vite) and the
 // reminder Edge Function (Deno) share one copy.
 //
-// Idea: the age gives a typical range; Noah's own recent daytime naps pull the
-// suggestion toward what actually works for him, but never outside that range
-// (plus a little slack). General guidance only, not medical advice.
+// Follows Hatch's published guide: a typical wake window by age, and for older
+// babies a window per slot of the day (before nap 1, before nap 2, ... before
+// bedtime) that grows through the day. The suggestion is a single target time:
+// last wake-up + the window for the next slot. General guidance, not medical advice.
 
 export type SleepLike = { start_time: string; end_time: string | null }
 
-// Typical awake stretch between sleeps, in hours, by completed months of age.
-const BY_MONTH: [number, [number, number]][] = [
-  [0, [0.75, 1.25]],
-  [1, [1, 1.5]],
-  [2, [1, 1.75]],
-  [3, [1.25, 2]],
-  [4, [1.5, 2.25]],
-  [5, [1.75, 2.5]],
-  [6, [2, 3]],
-  [7, [2.25, 3]],
-  [8, [2.5, 3.25]],
-  [9, [2.75, 3.75]],
-  [10, [2.75, 3.75]],
-  [11, [3, 4]],
-  [12, [3, 4]],
-  [15, [4, 6]]
-]
+type Bracket = {
+  label: string
+  /** Wake window in hours for each slot of the day; the last one leads into bedtime when hasBedtime. */
+  hours: number[]
+  hasBedtime: boolean
+}
 
-export function ageInMonths(birthISO: string | null, nowMs: number): number | null {
+const DAY = 86400000
+const HOUR = 3600000
+
+/** Age in days from a "YYYY-MM-DD" birth date, or null. */
+export function ageInDays(birthISO: string | null, nowMs: number): number | null {
   if (!birthISO) return null
   const [y, m, d] = birthISO.split('-').map(Number)
   const now = new Date(nowMs)
-  let months = (now.getFullYear() - y) * 12 + (now.getMonth() - (m - 1))
-  if (now.getDate() < d) months--
-  return Math.max(0, months)
+  const born = new Date(y, m - 1, d).getTime()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  return Math.max(0, Math.round((today - born) / DAY))
 }
 
-/** Age range in minutes [min, max]. Unknown age falls back to a mid-infant range. */
-export function ageRangeMinutes(months: number | null): [number, number] {
-  const m = months ?? 6
-  let pick = BY_MONTH[0][1]
-  for (const [from, range] of BY_MONTH) if (m >= from) pick = range
-  return [Math.round(pick[0] * 60), Math.round(pick[1] * 60)]
-}
-
-const DAY_START_HOUR = 7
-const DAY_END_HOUR = 19
-const LOOKBACK_MS = 14 * 86400000
-const MIN_SAMPLES = 6
-const HALF_WIDTH_MIN = 15
-
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b)
-  const mid = Math.floor(s.length / 2)
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
+/** Hatch's guide. Ages round to the nearest month (9 months 28 days counts as 10). */
+export function bracketFor(ageDays: number | null): Bracket {
+  if (ageDays == null) return { label: '6–9 months', hours: [2.5, 3, 3.5], hasBedtime: true }
+  if (ageDays < 35) return { label: '0–4 weeks', hours: [0.625], hasBedtime: false } // 30–45 min
+  if (ageDays < 112) return { label: '5–15 weeks', hours: [0.875], hasBedtime: false } // 45–60 min
+  const months = Math.round(ageDays / 30.4375)
+  if (months <= 4) return { label: '4 months', hours: [1.625], hasBedtime: false } // 1h30–1h45
+  if (months === 5) return { label: '5 months', hours: [2.25], hasBedtime: false } // 2–2.5h
+  if (months <= 9) return { label: '6–9 months', hours: [2.5, 3, 3.5], hasBedtime: true }
+  if (months <= 11) return { label: '10–11 months', hours: [2.75, 3.25, 3.75], hasBedtime: true }
+  if (months <= 24) return { label: '12–24 months', hours: [5, 4.75], hasBedtime: true } // AM 5h, PM 4.5–5h
+  return { label: '25–36 months', hours: [5.75, 5.5], hasBedtime: true } // AM 5.5–6h, PM 5–6h
 }
 
 export type Suggestion = {
   kind: 'nap' | 'bedtime'
   lastWakeMs: number
-  opensMs: number
-  closesMs: number
-  typicalMin: number
-  personalized: boolean
-  samples: number
-  ageRange: [number, number]
+  /** When the next sleep is suggested: last wake-up + this slot's wake window. */
+  targetMs: number
+  windowMin: number
+  /** Daytime sleeps already taken since the last night sleep. */
+  napsSoFar: number
+  ageLabel: string
 }
 
+const NIGHT_MS = 4 * HOUR // a sleep this long counts as night sleep
+const MIN_NAP_MS = 15 * 60000
+
 /**
- * The next suggested sleep window, or null when it doesn't apply (baby is asleep,
- * no recent wake-up, or the window falls in the middle of the night).
+ * The next suggested sleep time, or null when it doesn't apply (baby is asleep,
+ * no recent wake-up, or the target falls in the middle of the night).
  * `hourOf` maps a timestamp to the local hour (0-23) so callers pick the timezone.
  */
 export function suggestNext(
@@ -84,40 +75,28 @@ export function suggestNext(
   if (done.length === 0) return null
 
   const lastWakeMs = done[done.length - 1].end
-  if (lastWakeMs > nowMs || nowMs - lastWakeMs > 14 * 3600000) return null
+  if (lastWakeMs > nowMs || nowMs - lastWakeMs > 14 * HOUR) return null
 
-  const ageRange = ageRangeMinutes(ageInMonths(birthISO, nowMs))
-
-  // Gaps between a wake-up and the next daytime sleep, over the last 14 days.
-  const gaps: number[] = []
-  for (let i = 1; i < done.length; i++) {
-    const s = done[i]
-    if (nowMs - s.start > LOOKBACK_MS) continue
-    const h = hourOf(s.start)
-    if (h < DAY_START_HOUR || h >= DAY_END_HOUR) continue
-    if (s.end - s.start < 15 * 60000) continue
-    const gap = (s.start - done[i - 1].end) / 60000
-    if (gap >= 20 && gap <= 480) gaps.push(gap)
+  // Which slot of the day are we in? Count daytime sleeps since the last night sleep.
+  let nightIdx = -1
+  for (let i = done.length - 1; i >= 0; i--) {
+    if (done[i].end - done[i].start >= NIGHT_MS && nowMs - done[i].end < 30 * HOUR) {
+      nightIdx = i
+      break
+    }
   }
+  const sinceNight =
+    nightIdx >= 0
+      ? done.slice(nightIdx + 1)
+      : done.filter((s) => nowMs - s.start < 12 * HOUR && s.end - s.start < NIGHT_MS)
+  const napsSoFar = sinceNight.filter((s) => s.end - s.start >= MIN_NAP_MS).length
 
-  const personalized = gaps.length >= MIN_SAMPLES
-  const typicalMin = personalized
-    ? Math.min(ageRange[1] * 1.1, Math.max(ageRange[0] * 0.9, median(gaps)))
-    : (ageRange[0] + ageRange[1]) / 2
+  const b = bracketFor(ageInDays(birthISO, nowMs))
+  const slot = Math.min(napsSoFar, b.hours.length - 1)
+  const targetMs = lastWakeMs + b.hours[slot] * HOUR
+  const targetHour = hourOf(targetMs)
+  if (targetHour >= 23 || targetHour < 5) return null
 
-  const opensMs = lastWakeMs + (typicalMin - HALF_WIDTH_MIN) * 60000
-  const closesMs = lastWakeMs + (typicalMin + HALF_WIDTH_MIN) * 60000
-  const openHour = hourOf(opensMs)
-  if (openHour >= 21 || openHour < 5) return null
-
-  return {
-    kind: openHour >= 18 ? 'bedtime' : 'nap',
-    lastWakeMs,
-    opensMs,
-    closesMs,
-    typicalMin,
-    personalized,
-    samples: gaps.length,
-    ageRange
-  }
+  const kind = b.hasBedtime ? (napsSoFar >= b.hours.length - 1 ? 'bedtime' : 'nap') : targetHour >= 18 ? 'bedtime' : 'nap'
+  return { kind, lastWakeMs, targetMs, windowMin: Math.round(b.hours[slot] * 60), napsSoFar, ageLabel: b.label }
 }

@@ -75,16 +75,14 @@ Deno.serve(async (req) => {
         const s = suggestNext(sessions ?? [], birthOf.get(childId) ?? null, now, hourOf)
         if (!s) continue
         const lead = (p.nap_lead_minutes ?? 10) * 60000
-        // Send once per wake-up, from `lead` before the window opens until it closes.
-        if (now < s.opensMs - lead || now > s.closesMs) continue
+        // Send once per wake-up: from `lead` before the suggested time until 30 minutes after it.
+        if (now < s.targetMs - lead || now > s.targetMs + 30 * 60000) continue
         const name = nameOf.get(childId) ?? 'Baby'
-        const what = s.kind === 'bedtime' ? 'bedtime' : 'nap'
-        const mins = Math.round((s.opensMs - now) / 60000)
-        const body =
-          mins > 0
-            ? `${name}'s ${what} window opens in about ${mins} min (${fmtClock.format(new Date(s.opensMs))}–${fmtClock.format(new Date(s.closesMs))}).`
-            : `${name}'s ${what} window is open now (until ${fmtClock.format(new Date(s.closesMs))}).`
-        await once(`nap:${childId}:${s.lastWakeMs}:${p.user_id}`, s.kind === 'bedtime' ? 'Bedtime window' : 'Nap window', body, 'nap-window')
+        const what = s.kind === 'bedtime' ? 'bedtime' : 'nap time'
+        const mins = Math.round((s.targetMs - now) / 60000)
+        const at = fmtClock.format(new Date(s.targetMs))
+        const body = mins > 0 ? `${name}'s ${what} is in about ${mins} min (${at}).` : `It's ${what} for ${name} (${at}).`
+        await once(`nap:${childId}:${s.lastWakeMs}:${p.user_id}`, s.kind === 'bedtime' ? 'Bedtime' : 'Nap time', body, 'nap-window')
       }
     }
   }

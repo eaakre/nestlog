@@ -84,8 +84,8 @@ there too.
 ## 6. Push notifications (optional)
 
 Gives you partner alerts ("Sam started a sleep"), "timer still running"
-reminders, "it's been 3h since the last feeding" reminders, and "nap window
-opens soon" reminders (run migration 0011 and redeploy `send-reminders`). Works on
+reminders, "it's been 3h since the last feeding" reminders, and "nap time
+is coming up" reminders (run migration 0011 and redeploy `send-reminders`). Works on
 Android/desktop browsers, and on iPhone (iOS 16.4+) once the app is added to
 the Home Screen. Each person turns it on per device in **Settings → Notifications**.
 

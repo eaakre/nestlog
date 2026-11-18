@@ -180,7 +180,7 @@ export default function SleepCard({ childId }: { childId: string }) {
       )}
 
       {!active && allRows.length > 0 && (
-        <WakeWindowHint sessions={allRows} birthDate={activeChild?.birth_date ?? null} name={activeChild?.name ?? 'Baby'} />
+        <WakeWindowHint sessions={allRows} birthDate={activeChild?.birth_date ?? null} />
       )}
 
       {active ? (
