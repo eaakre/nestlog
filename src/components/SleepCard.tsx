@@ -14,6 +14,7 @@ import SleepEditor from './editors/SleepEditor'
 import type { SleepSession } from '../types'
 import DateTimeInput from './DateTimeInput'
 import WakeWindowHint from './WakeWindowHint'
+import { useWakeWindowSetting } from '../lib/wakeWindowPref'
 import { useChildren } from '../contexts/ChildContext'
 import ModeToggle, { localValue, thirtyAgo, type EntryMode } from './ModeToggle'
 
@@ -23,6 +24,7 @@ export default function SleepCard({ childId }: { childId: string }) {
   const [busy, setBusy] = useState(false)
   const now = useNow()
   const { activeChild } = useChildren()
+  const [showWakeWindows] = useWakeWindowSetting()
   // Fetch two-plus weeks so wake windows can learn from them; the history list still shows the latest 20.
   const { rows: allRows, reload } = useRecentRows<SleepSession>('sleep_sessions', childId, 'start_time', 120)
   const rows = allRows.slice(0, 20)
@@ -179,7 +181,7 @@ export default function SleepCard({ childId }: { childId: string }) {
         <LastSummary icon="🌙" label="Woke up" time={lastDone.end_time} value={formatDurationMinutes(lastMinutes) ?? ''} />
       )}
 
-      {!active && allRows.length > 0 && (
+      {showWakeWindows && !active && allRows.length > 0 && (
         <WakeWindowHint sessions={allRows} birthDate={activeChild?.birth_date ?? null} />
       )}
 

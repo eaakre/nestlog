@@ -7,6 +7,8 @@ import { useUnit } from '../lib/units'
 import BottomNav from '../components/BottomNav'
 import NotificationSettings from '../components/NotificationSettings'
 import DateInput from '../components/DateInput'
+import Toggle from '../components/Toggle'
+import { useWakeWindowSetting } from '../lib/wakeWindowPref'
 import { formatAge, todayISO } from '../lib/age'
 import type { Profile } from '../types'
 
@@ -14,6 +16,7 @@ export default function Settings() {
   const { user, profile, signOut } = useAuth()
   const { activeChild, createInvite, updateBirthDate } = useChildren()
   const { unit, setUnit } = useUnit()
+  const [wakeWindows, setWakeWindows] = useWakeWindowSetting()
   const [members, setMembers] = useState<Profile[]>([])
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +120,13 @@ export default function Settings() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="card mb-4">
+        <Toggle label="Wake-window suggestions" checked={wakeWindows} onChange={setWakeWindows} />
+        <p className="text-parchment-300 text-xs">
+          Show the next nap or bedtime suggestion on the Sleep card. This phone only; nap reminders have their own switch under Notifications.
+        </p>
       </div>
 
       <NotificationSettings />
